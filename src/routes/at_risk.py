@@ -82,7 +82,7 @@ def _active_term_filter():
 @login_required
 def index():
     p = get_perms()
-    all_grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    all_grades = [r[0] for r in db.session.query(Student.grade).filter(Student.is_active == True).distinct().order_by(Student.grade).all()]
     vg = p.visible_grades()
     grades = all_grades if vg is None else [g for g in all_grades if g in vg]
 
@@ -95,23 +95,38 @@ def index():
 
     ay, terms, selected_term = _active_term_filter()
 
-    # Subject names — deduplicated so cross-grade subjects (e.g. Mathematics)
-    # only appear once in the dropdown when no grade is selected.
+    # Subject IDs this user may view, per grade (None = no restriction)
+    def _visible_sids_for(grade):
+        return p.visible_subject_ids_for_grade(grade) if grade else None
+
+    # Subject dropdown — restricted to the user's viewable subjects for the grade
     if selected_grade:
-        subject_names = [
-            r[0] for r in db.session.query(Subject.name)
-            .filter_by(grade=selected_grade)
-            .distinct().order_by(Subject.name).all()
-        ]
+        sq = db.session.query(Subject.name).filter(Subject.grade == selected_grade, Subject.is_active == True)
+        vsids = _visible_sids_for(selected_grade)
+        if vsids is not None:
+            sq = sq.filter(Subject.id.in_(vsids))
+        subject_names = [r[0] for r in sq.distinct().order_by(Subject.name).all()]
     else:
-        subject_names = [
-            r[0] for r in db.session.query(Subject.name)
-            .distinct().order_by(Subject.name).all()
-        ]
+        # No grade selected — show union of all subjects the user can see
+        if p.can_view_all:
+            subject_names = [
+                r[0] for r in db.session.query(Subject.name)
+                .filter(Subject.is_active == True)
+                .distinct().order_by(Subject.name).all()
+            ]
+        else:
+            ep = p.enterable_pairs() or set()
+            visible_sid_list = [sid for _, sid in ep]
+            subject_names = [
+                r[0] for r in db.session.query(Subject.name)
+                .filter(Subject.id.in_(visible_sid_list), Subject.is_active == True)
+                .distinct().order_by(Subject.name).all()
+            ] if visible_sid_list else []
 
     q = (
         WeeklyEntry.query
         .join(Student)
+        .filter(Student.is_active == True)
         .order_by(
             Student.grade,
             WeeklyEntry.student_id,
@@ -122,9 +137,17 @@ def index():
     )
     if selected_grade:
         q = q.filter(Student.grade == selected_grade)
+        # Further restrict to subjects visible in this grade
+        vsids = _visible_sids_for(selected_grade)
+        if vsids is not None:
+            q = q.filter(WeeklyEntry.subject_id.in_(vsids))
     elif vg is not None:
         # Restrict to visible grades
         q = q.filter(Student.grade.in_(list(vg)))
+        # Also restrict to enterable subjects across those grades
+        ep = p.enterable_pairs()
+        if ep is not None:
+            q = q.filter(WeeklyEntry.subject_id.in_([sid for _, sid in ep]))
     if selected_subject:
         q = q.join(Subject).filter(Subject.name == selected_subject)
 

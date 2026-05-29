@@ -184,6 +184,18 @@ class Permissions:
         # Teacher/Coordinator: only own assignments
         return self.can_enter(grade, subject_id)
 
+    def can_manage_students(self, grade: str) -> bool:
+        """True for Admin (any grade) or In-Charge of that specific grade."""
+        if self.is_admin:
+            return True
+        return any(r.role == "incharge" and r.grade == grade for r in self._roles)
+
+    def manageable_grades(self):
+        """None = no restriction (admin). Set of grades where user is In-Charge."""
+        if self.is_admin:
+            return None
+        return {r.grade for r in self._roles if r.role == "incharge" and r.grade}
+
     def visible_subject_ids_for_grade(self, grade: str):
         """
         Returns None (no restriction) or a set of subject_ids visible in this grade.

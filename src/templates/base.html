@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -89,7 +89,7 @@
           Student Watch
         </a>
 
-        {% if perms.is_admin or perms.can_view_all %}
+        {% if perms.is_admin or perms.can_view_all or perms.is_incharge %}
         <div class="mt-4 mb-1">
           <p class="px-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Admin</p>
         </div>
@@ -108,11 +108,40 @@
 
         <a href="{{ url_for('admin.index') }}"
            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint and request.endpoint.startswith('admin.') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+                  {% if request.endpoint == 'admin.index' or request.endpoint in ('admin.new_user','admin.edit_user') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
           </svg>
           Users
+        </a>
+
+        <a href="{{ url_for('admin.grades') }}"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                  {% if request.endpoint in ('admin.grades','admin.new_grade','admin.deactivate_grade','admin.reactivate_grade') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+          <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
+          Grades
+        </a>
+
+        <a href="{{ url_for('admin.subjects') }}"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                  {% if request.endpoint in ('admin.subjects','admin.new_subject','admin.deactivate_subject','admin.reactivate_subject') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+          <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+          </svg>
+          Subjects
+        </a>
+        {% endif %}
+
+        {% if perms.is_admin or perms.is_incharge %}
+        <a href="{{ url_for('admin.students') }}"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                  {% if request.endpoint in ('admin.students','admin.new_student','admin.edit_student','admin.deactivate_student','admin.reactivate_student') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+          <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+          </svg>
+          Students
         </a>
         {% endif %}
 

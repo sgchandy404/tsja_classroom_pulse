@@ -28,20 +28,21 @@
       <option value="">All actions</option>
       <option value="create" {% if sel_action == 'create' %}selected{% endif %}>Create</option>
       <option value="edit"   {% if sel_action == 'edit'   %}selected{% endif %}>Edit</option>
+      <option value="delete" {% if sel_action == 'delete' %}selected{% endif %}>Delete</option>
     </select>
   </div>
 
   <div>
     <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">From</label>
-    <input type="date" name="date_from" value="{{ sel_date_from }}"
-           class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm
+    <input type="text" name="date_from" value="{{ sel_date_from }}" placeholder="DD/MM/YYYY"
+           class="w-32 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm
                   focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
   </div>
 
   <div>
     <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">To</label>
-    <input type="date" name="date_to" value="{{ sel_date_to }}"
-           class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm
+    <input type="text" name="date_to" value="{{ sel_date_to }}" placeholder="DD/MM/YYYY"
+           class="w-32 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm
                   focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
   </div>
 
@@ -51,53 +52,58 @@
     Filter
   </button>
 
-  {% if sel_user_id or sel_action or sel_date_from or sel_date_to %}
+  {% if sel_user_id or sel_action or sel_date_to %}
   <a href="{{ url_for('audit.index') }}"
      class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 shadow-sm
             hover:text-slate-700 hover:border-slate-300 transition-colors">
-    Clear
+    Reset
   </a>
   {% endif %}
 </form>
 
-{% if logs %}
+{% if log_rows %}
 <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
   <table class="min-w-full text-sm">
     <thead>
       <tr class="border-b border-slate-100 bg-slate-50">
-        <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Timestamp</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">User</th>
+        <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">When</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">By</th>
         <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Action</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Record</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Field</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Old Value</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">New Value</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">What happened</th>
         <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Note</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
-      {% for log in logs %}
+      {% for row in log_rows %}
+      {% set log = row.log %}
       <tr class="hover:bg-slate-50 transition-colors">
-        <td class="px-5 py-3 text-xs text-slate-500 whitespace-nowrap font-mono">
-          {{ log.timestamp.strftime('%d %b %Y %H:%M') }}
+
+        <td class="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">
+          {{ log.timestamp.strftime('%d/%m/%Y %H:%M') }}
         </td>
-        <td class="px-4 py-3 text-sm font-medium text-slate-700">{{ log.user.username }}</td>
-        <td class="px-4 py-3">
+
+        <td class="px-4 py-3 text-sm font-medium text-slate-700 whitespace-nowrap">
+          {{ log.user.username }}
+        </td>
+
+        <td class="px-4 py-3 whitespace-nowrap">
           {% if log.action == 'create' %}
             <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">Create</span>
+          {% elif log.action == 'delete' %}
+            <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Delete</span>
           {% else %}
             <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Edit</span>
           {% endif %}
         </td>
-        <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ log.model_name }} #{{ log.record_id }}</td>
-        <td class="px-4 py-3 text-xs text-slate-500">{{ log.field_name or '—' }}</td>
-        <td class="px-4 py-3 text-xs text-slate-500">
-          {% if log.old_value %}
-            <span class="line-through text-red-400">{{ log.old_value }}</span>
-          {% else %}—{% endif %}
+
+        <td class="px-4 py-3 text-sm text-slate-700">
+          {{ row.description }}
         </td>
-        <td class="px-4 py-3 text-xs font-medium text-slate-700">{{ log.new_value or '—' }}</td>
-        <td class="px-4 py-3 text-xs text-amber-600">{{ log.note or '' }}</td>
+
+        <td class="px-4 py-3 text-xs text-amber-600">
+          {{ log.note or '' }}
+        </td>
+
       </tr>
       {% endfor %}
     </tbody>
@@ -107,7 +113,7 @@
 <!-- Pagination -->
 {% if pagination.pages > 1 %}
 <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
-  <p>Showing {{ ((pagination.page - 1) * 50) + 1 }}–{{ ((pagination.page - 1) * 50) + logs|length }} of {{ pagination.total }}</p>
+  <p>Showing {{ ((pagination.page - 1) * 50) + 1 }}–{{ ((pagination.page - 1) * 50) + log_rows|length }} of {{ pagination.total }}</p>
   <div class="flex items-center gap-2">
     {% if pagination.has_prev %}
       <a href="{{ url_for('audit.index', page=pagination.prev_num, user_id=sel_user_id, action=sel_action, date_from=sel_date_from, date_to=sel_date_to) }}"
@@ -125,8 +131,8 @@
 {% else %}
 <div class="flex flex-col items-center justify-center h-56 rounded-xl border-2 border-dashed border-slate-200">
   <p class="text-sm font-medium text-slate-500">No audit log entries found.</p>
-  {% if sel_user_id or sel_action or sel_date_from or sel_date_to %}
-    <a href="{{ url_for('audit.index') }}" class="mt-2 text-xs text-indigo-600 hover:text-indigo-500">Clear filters</a>
+  {% if sel_user_id or sel_action or sel_date_to %}
+    <a href="{{ url_for('audit.index') }}" class="mt-2 text-xs text-indigo-600 hover:text-indigo-500">Reset filters</a>
   {% endif %}
 </div>
 {% endif %}

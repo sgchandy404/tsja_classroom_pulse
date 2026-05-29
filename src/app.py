@@ -3,7 +3,7 @@ import random
 import datetime
 from flask import Flask, redirect, url_for, render_template
 from flask_login import LoginManager, current_user
-from models import db, User, UserRole, Student, Subject, WeeklyEntry, AcademicYear, Term, AppConfig, RANKINGS
+from models import db, User, UserRole, Student, Subject, Grade, WeeklyEntry, AcademicYear, Term, AppConfig, RANKINGS
 
 login_manager = LoginManager()
 
@@ -45,9 +45,11 @@ def create_app() -> Flask:
 
     with app.app_context():
         db.create_all()
+        _migrate_schema()
         _seed_admin()
         _seed_default_academic_year()
         _seed_default_config()
+        _seed_grades()
         if os.getenv("SEED_DEMO_DATA") == "1" and Subject.query.count() == 0:
             _seed_demo()
 
@@ -71,6 +73,36 @@ def load_user(user_id: str):
     return db.session.get(User, int(user_id))
 
 
+def _migrate_schema() -> None:
+    """Add new columns/tables to existing DBs without losing data (SQLite-safe)."""
+    with db.engine.connect() as conn:
+        for stmt in [
+            "ALTER TABLE students ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
+            "ALTER TABLE subjects ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
+        ]:
+            try:
+                conn.execute(db.text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+
+def _seed_grades() -> None:
+    """Auto-migrate existing grade strings into the Grade registry if it is empty."""
+    if Grade.query.count() > 0:
+        return
+    existing = set(
+        [r[0] for r in db.session.query(Student.grade).distinct().all()] +
+        [r[0] for r in db.session.query(Subject.grade).distinct().all()]
+    )
+    for name in sorted(existing):
+        if name:
+            db.session.add(Grade(name=name, is_active=True))
+    if existing:
+        db.session.commit()
+        print(f"[init] Seeded {len(existing)} grade(s) into Grade registry.")
+
+
 def _seed_admin() -> None:
     if User.query.count() == 0:
         admin = User(username="admin")
@@ -90,7 +122,7 @@ def _seed_admin() -> None:
 
 def _seed_default_config() -> None:
     """Seed default AppConfig values if not already present."""
-    if not AppConfig.query.get("grace_period_hours"):
+    if not db.session.get(AppConfig, "grace_period_hours"):
         db.session.add(AppConfig(key="grace_period_hours", value="48"))
         db.session.commit()
 
@@ -182,6 +214,12 @@ def _seed_demo() -> None:
     # Weeks: last 6 weeks ending at week 22, 2026
     BASE_YEAR = 2026
     WEEKS = list(range(17, 23))  # weeks 17-22
+
+    # Seed Grade registry
+    for grade_name in GRADES:
+        if not Grade.query.filter_by(name=grade_name).first():
+            db.session.add(Grade(name=grade_name, is_active=True))
+    db.session.flush()
 
     # Insert subjects and students
     subject_objs = {}

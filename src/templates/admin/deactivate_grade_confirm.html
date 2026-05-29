@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Deactivate Grade — Classroom Pulse{% endblock %}
+{% block page_title %}Deactivate Grade{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.grades') }}" class="text-sm text-slate-500 hover:text-slate-700">← Grades</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="rounded-xl border border-red-100 bg-white px-8 py-6 shadow-sm">
+    <div class="mb-5 flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600 text-lg">⚠</div>
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">Deactivate "{{ grade.name }}"?</h2>
+        <p class="text-xs text-slate-500 mt-0.5">This hides the grade from entry forms and dashboards.</p>
+      </div>
+    </div>
+
+    <div class="mb-6 rounded-lg bg-amber-50 border border-amber-200 px-5 py-4 text-sm text-amber-800 space-y-1">
+      <p>This grade currently has:</p>
+      <ul class="list-disc list-inside mt-1 space-y-0.5 text-amber-700">
+        <li><strong>{{ student_count }}</strong> active student(s)</li>
+        <li><strong>{{ subject_count }}</strong> active subject(s)</li>
+        <li><strong>{{ entry_count }}</strong> historical ranking entry/entries</li>
+      </ul>
+      <p class="mt-2 text-xs">Historical data is always preserved. You can reactivate this grade at any time.</p>
+    </div>
+
+    <div class="flex gap-3">
+      <form method="POST">
+        <button type="submit"
+                class="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 transition-colors">
+          Yes, Deactivate
+        </button>
+      </form>
+      <a href="{{ url_for('admin.grades') }}"
+         class="rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">
+        Cancel
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

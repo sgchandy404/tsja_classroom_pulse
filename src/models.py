@@ -137,6 +137,17 @@ class Term(db.Model):
 
 
 # ---------------------------------------------------------------------------
+# Grade registry
+# ---------------------------------------------------------------------------
+
+class Grade(db.Model):
+    __tablename__ = "grades"
+    id        = db.Column(db.Integer, primary_key=True)
+    name      = db.Column(db.String(20), nullable=False, unique=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+
+# ---------------------------------------------------------------------------
 # Students & subjects
 # ---------------------------------------------------------------------------
 
@@ -146,6 +157,7 @@ class Student(db.Model):
     name        = db.Column(db.String(120), nullable=False)
     roll_number = db.Column(db.String(20), nullable=False)
     grade       = db.Column(db.String(20), nullable=False)
+    is_active   = db.Column(db.Boolean, nullable=False, default=True)
 
     entries = db.relationship("WeeklyEntry", back_populates="student",
                               cascade="all, delete-orphan")
@@ -157,9 +169,10 @@ class Student(db.Model):
 
 class Subject(db.Model):
     __tablename__ = "subjects"
-    id    = db.Column(db.Integer, primary_key=True)
-    name  = db.Column(db.String(80), nullable=False)
-    grade = db.Column(db.String(20), nullable=False)
+    id        = db.Column(db.Integer, primary_key=True)
+    name      = db.Column(db.String(80), nullable=False)
+    grade     = db.Column(db.String(20), nullable=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     entries = db.relationship("WeeklyEntry", back_populates="subject",
                               cascade="all, delete-orphan")
@@ -227,12 +240,12 @@ class AppConfig(db.Model):
 
     @classmethod
     def get_value(cls, key, default=None):
-        row = cls.query.get(key)
+        row = db.session.get(cls, key)
         return row.value if row else default
 
     @classmethod
     def set_value(cls, key, value):
-        row = cls.query.get(key)
+        row = db.session.get(cls, key)
         if row:
             row.value = str(value)
         else:

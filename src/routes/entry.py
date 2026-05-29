@@ -17,7 +17,7 @@ def _week_label(week, year):
     try:
         monday = datetime.date.fromisocalendar(year, week, 1)
         sunday = monday + datetime.timedelta(days=6)
-        return f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
+        return f"{monday.strftime('%d/%m/%Y')} – {sunday.strftime('%d/%m/%Y')}"
     except ValueError:
         return f"{year}, week {week}"
 
@@ -41,7 +41,7 @@ def _week_options(centre_week, centre_year, past=8, future=2):
 @login_required
 def form():
     p = get_perms()
-    all_grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    all_grades = [r[0] for r in db.session.query(Student.grade).filter(Student.is_active == True).distinct().order_by(Student.grade).all()]
 
     # Filter grades to what the user can enter
     enterable = p.enterable_grades()
@@ -70,7 +70,7 @@ def students():
     p = get_perms()
     if not p.can_view_grade(grade):
         return jsonify([])
-    rows = Student.query.filter_by(grade=grade).order_by(Student.roll_number).all()
+    rows = Student.query.filter_by(grade=grade, is_active=True).order_by(Student.roll_number).all()
     return jsonify([{"id": s.id, "name": s.name, "roll_number": s.roll_number} for s in rows])
 
 
@@ -79,7 +79,7 @@ def students():
 def subjects():
     grade = request.args.get("grade", "")
     p = get_perms()
-    q = Subject.query.filter_by(grade=grade).order_by(Subject.name)
+    q = Subject.query.filter_by(grade=grade, is_active=True).order_by(Subject.name)
     rows = q.all()
 
     # Filter to subjects the user can enter
@@ -113,7 +113,7 @@ def submit():
     now = datetime.datetime.utcnow()
 
     for (student_id, subject_id), ranking in raw_entries.items():
-        subject = Subject.query.get(subject_id)
+        subject = db.session.get(Subject, subject_id)
         if not subject:
             continue
 

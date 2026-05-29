@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Students — Classroom Pulse{% endblock %}
+{% block page_title %}Student Management{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.new_student', grade=grade_filter) }}"
+     class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+    + New Student
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  {# Grade filter #}
+  {% if manageable_grades | length > 1 %}
+  <form method="GET" class="flex items-center gap-3">
+    <select name="grade" onchange="this.form.submit()"
+            class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm
+                   focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+      <option value="">All Grades</option>
+      {% for g in manageable_grades %}
+        <option value="{{ g }}" {% if g == grade_filter %}selected{% endif %}>{{ g }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+
+  <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-100 bg-slate-50">
+          <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Name</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Roll No.</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+          <th class="px-4 py-3.5"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for s in students %}
+        <tr class="hover:bg-slate-50 transition-colors {% if not s.is_active %}opacity-60{% endif %}">
+          <td class="px-6 py-4 font-medium text-slate-800">{{ s.name }}</td>
+          <td class="px-4 py-4 text-slate-500">{{ s.roll_number or '—' }}</td>
+          <td class="px-4 py-4 text-slate-500">{{ s.grade }}</td>
+          <td class="px-4 py-4">
+            {% if s.is_active %}
+              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-600">
+                <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Active
+              </span>
+            {% else %}
+              <span class="text-xs text-slate-400">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-4 text-right">
+            <div class="flex items-center justify-end gap-3">
+              <a href="{{ url_for('admin.edit_student', student_id=s.id) }}"
+                 class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Edit</a>
+              {% if s.is_active %}
+                <a href="{{ url_for('admin.deactivate_student', student_id=s.id) }}"
+                   class="text-xs font-medium text-red-500 hover:text-red-700">Deactivate</a>
+              {% else %}
+                <form method="POST" action="{{ url_for('admin.reactivate_student', student_id=s.id) }}" class="inline">
+                  <button type="submit" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Reactivate</button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="px-6 py-10 text-center text-sm text-slate-400">
+            No students found{% if grade_filter %} in {{ grade_filter }}{% endif %}.
+            <a href="{{ url_for('admin.new_student', grade=grade_filter) }}" class="text-indigo-600 hover:underline">Add one</a>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
