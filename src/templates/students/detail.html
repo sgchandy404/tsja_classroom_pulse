@@ -7,17 +7,13 @@
 {% block head %}
 <style>
   @keyframes row-flash {
-    0%   { background-color: #fef3c7; }
-    25%  { background-color: #fde68a; }
-    50%  { background-color: #fef3c7; }
-    75%  { background-color: #fde68a; }
+    0%   { background-color: transparent; }
+    30%  { background-color: #eef2ff; }
+    60%  { background-color: #e0e7ff; }
     100% { background-color: transparent; }
   }
   .row-highlight {
-    animation: row-flash 1.4s ease-in-out;
-    outline: 2px solid #f59e0b;
-    outline-offset: -2px;
-    border-radius: 4px;
+    animation: row-flash 1.6s ease-in-out;
   }
 </style>
 {% endblock %}
@@ -37,7 +33,7 @@
   >
     {% for s in grade_mates %}
       <option value="{{ s.id }}" {% if s.id == student.id %}selected{% endif %}>
-        {{ s.name }} ({{ s.roll_number }})
+        {{ s.name }}
       </option>
     {% endfor %}
   </select>
@@ -83,7 +79,7 @@
                    x-text="r.name[0]"></div>
               <div class="min-w-0">
                 <p class="text-xs font-medium text-slate-800 truncate" x-text="r.name"></p>
-                <p class="text-[10px] text-slate-400" x-text="r.grade + ' · ' + r.roll"></p>
+                <p class="text-[10px] text-slate-400" x-text="r.grade"></p>
               </div>
             </a>
           </li>

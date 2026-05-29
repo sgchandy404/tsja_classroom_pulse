@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% from "macros.html" import ranking_badge %}
 
-{% block title %}At-Risk Students — Classroom Pulse{% endblock %}
+{% block title %}Student Watch — Classroom Pulse{% endblock %}
 {% block page_title %}Student Watch{% endblock %}
 
 {% block header_actions %}
   <form method="GET" action="{{ url_for('at_risk.index') }}" class="flex items-center gap-2">
-    <!-- Grade filter -->
     <select
       name="grade"
       onchange="this.form.submit()"
@@ -19,7 +18,6 @@
       {% endfor %}
     </select>
 
-    <!-- Subject filter (deduplicated) -->
     <select
       name="subject"
       onchange="this.form.submit()"
@@ -49,31 +47,27 @@
   <div class="flex items-center gap-2">
     <span class="inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
     <span class="text-sm text-slate-600">
-      <span class="font-semibold text-slate-800">{{ flagged | selectattr('reason', 'equalto', 'declining') | list | length }}</span>
-      declining
+      <span class="font-semibold text-slate-800">{{ counts.declining }}</span> declining
     </span>
   </div>
   <div class="flex items-center gap-2">
     <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-400"></span>
     <span class="text-sm text-slate-600">
-      <span class="font-semibold text-slate-800">{{ flagged | selectattr('reason', 'equalto', 'stuck') | list | length }}</span>
-      stuck at Working Towards
+      <span class="font-semibold text-slate-800">{{ counts.stuck }}</span> stuck
     </span>
   </div>
   <div class="flex items-center gap-2">
     <span class="inline-flex h-2.5 w-2.5 rounded-full bg-green-400"></span>
     <span class="text-sm text-slate-600">
-      <span class="font-semibold text-slate-800">{{ improving | length }}</span>
-      improving
+      <span class="font-semibold text-slate-800">{{ counts.improving }}</span> improving
     </span>
   </div>
-  {% if not flagged and not improving %}
-    <span class="text-sm text-slate-400">No students to highlight{% if selected_grade %} in {{ selected_grade }}{% endif %}.</span>
+  {% if not rows %}
+    <span class="text-sm text-slate-400 ml-2">Nothing to flag{% if selected_grade or selected_subject %} for this filter{% endif %}. Students need at least 3 weeks of data.</span>
   {% endif %}
 </div>
 
-<!-- At-risk table macro -->
-{% macro student_table(rows, show_flag=true) %}
+{% if rows %}
 <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
   <table class="min-w-full text-sm">
     <thead>
@@ -83,9 +77,7 @@
         <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
         <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Current Ranking</th>
         <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Last 3 Weeks</th>
-        {% if show_flag %}
         <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flag</th>
-        {% endif %}
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
@@ -97,16 +89,15 @@
              class="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
             {{ item.student.name }}
           </a>
-          <p class="text-xs text-slate-400 mt-0.5">{{ item.student.roll_number }}</p>
         </td>
+
 
         <td class="px-4 py-4 text-slate-600 whitespace-nowrap">{{ item.student.grade }}</td>
         <td class="px-4 py-4 text-slate-600 whitespace-nowrap">{{ item.subject.name }}</td>
 
-        <td class="px-4 py-4">
-          {{ ranking_badge(item.last_ranking) }}
-        </td>
+        <td class="px-4 py-4">{{ ranking_badge(item.last_ranking) }}</td>
 
+        <!-- Last 3 weeks dot timeline -->
         <td class="px-4 py-4">
           <div class="flex items-center gap-1.5">
             {% for w in item.weeks_data %}
@@ -127,7 +118,7 @@
           </div>
         </td>
 
-        {% if show_flag %}
+        <!-- Flag badge -->
         <td class="px-4 py-4">
           {% if item.reason == 'declining' %}
             <span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
@@ -143,45 +134,29 @@
               </svg>
               Stuck
             </span>
+          {% elif item.reason == 'improving' %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+              </svg>
+              Improving
+            </span>
           {% endif %}
         </td>
-        {% endif %}
 
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
-{% endmacro %}
 
-<!-- At-risk section -->
-{% if flagged %}
-  <div class="mb-8">
-    <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-      <span class="inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-      At-Risk Students
-      <span class="text-xs font-normal text-slate-400">({{ flagged | length }} record{{ 's' if flagged | length != 1 }})</span>
-    </h2>
-    {{ student_table(flagged, show_flag=true) }}
-  </div>
 {% else %}
-  <div class="mb-8 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-    <svg class="h-5 w-5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+  <div class="flex flex-col items-center justify-center h-56 rounded-xl border-2 border-dashed border-slate-200">
+    <svg class="h-8 w-8 text-green-400 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     </svg>
-    <p class="text-sm text-slate-600">No at-risk students detected{% if selected_grade or selected_subject %} for this filter{% endif %}. Need at least 3 weeks of data per student.</p>
-  </div>
-{% endif %}
-
-<!-- Improving section -->
-{% if improving %}
-  <div>
-    <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-      <span class="inline-flex h-2 w-2 rounded-full bg-green-500"></span>
-      Improving Students
-      <span class="text-xs font-normal text-slate-400">({{ improving | length }} record{{ 's' if improving | length != 1 }})</span>
-    </h2>
-    {{ student_table(improving, show_flag=false) }}
+    <p class="text-sm font-medium text-slate-600">No students to flag.</p>
+    <p class="text-xs text-slate-400 mt-1">At least 3 weeks of data needed per student per subject.</p>
   </div>
 {% endif %}
 

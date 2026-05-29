@@ -93,8 +93,7 @@ def index():
     for entry in all_entries:
         grouped[(entry.student_id, entry.subject_id)].append(entry)
 
-    flagged    = []
-    improving  = []
+    rows = []
 
     for (student_id, subject_id), entries in grouped.items():
         is_flagged, reason = _detect(entries)
@@ -102,7 +101,7 @@ def index():
             continue
 
         last = entries[-1]
-        row = {
+        rows.append({
             "student":      last.student,
             "subject":      last.subject,
             "reason":       reason,
@@ -113,24 +112,22 @@ def index():
                 {"week": e.iso_week, "year": e.iso_year, "ranking": e.ranking}
                 for e in entries[-3:]
             ],
-        }
+        })
 
-        if reason == "improving":
-            improving.append(row)
-        else:
-            flagged.append(row)
-
-    flagged.sort(key=lambda x: (
-        0 if x["reason"] == "declining" else 1,
+    # Sort: declining → stuck → improving, then grade → name
+    reason_order = {"declining": 0, "stuck": 1, "improving": 2}
+    rows.sort(key=lambda x: (
+        reason_order.get(x["reason"], 9),
         x["student"].grade,
         x["student"].name,
     ))
-    improving.sort(key=lambda x: (x["student"].grade, x["student"].name))
+
+    counts = {r: sum(1 for x in rows if x["reason"] == r) for r in ("declining", "stuck", "improving")}
 
     return render_template(
         "at_risk/list.html",
-        flagged=flagged,
-        improving=improving,
+        rows=rows,
+        counts=counts,
         grades=grades,
         subject_names=subject_names,
         selected_grade=selected_grade,
