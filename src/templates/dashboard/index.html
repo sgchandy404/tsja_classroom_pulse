@@ -5,33 +5,24 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block header_actions %}
-  <!-- Week selector -->
-  <form method="GET" action="{{ url_for('dashboard.index') }}" class="flex items-center gap-2">
-    <input type="hidden" name="grade" value="{{ selected_grade or '' }}" />
-    <select
-      name="week_year"
-      onchange="
-        const [w, y] = this.value.split(':');
-        this.form.querySelector('[name=week]').value = w;
-        this.form.querySelector('[name=year]').value = y;
-        this.form.submit();
-      "
-      class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
-             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-    >
-      {% if not available_weeks %}
-        <option>No data yet</option>
-      {% endif %}
-      {% for w in available_weeks %}
-        <option
-          value="{{ w.week }}:{{ w.year }}"
-          {% if w.week == selected_week and w.year == selected_year %}selected{% endif %}
-        >{{ w.label }}</option>
-      {% endfor %}
-    </select>
-    <input type="hidden" name="week" value="{{ selected_week }}" />
-    <input type="hidden" name="year" value="{{ selected_year }}" />
-  </form>
+  <!-- Week prev/next navigation -->
+  <div class="flex items-center gap-1 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=prev_week, year=prev_year) }}"
+       class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+      </svg>
+    </a>
+    <span class="px-3 py-1.5 text-xs font-medium text-slate-700 border-x border-slate-200 whitespace-nowrap">
+      {{ week_label }}
+    </span>
+    <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=next_week, year=next_year) }}"
+       class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+      </svg>
+    </a>
+  </div>
 {% endblock %}
 
 {% block content %}

@@ -6,6 +6,7 @@
 
 {% block header_actions %}
   <form method="GET" action="{{ url_for('at_risk.index') }}" class="flex items-center gap-2">
+    <!-- Grade filter -->
     <select
       name="grade"
       onchange="this.form.submit()"
@@ -17,6 +18,27 @@
         <option value="{{ g }}" {% if g == selected_grade %}selected{% endif %}>{{ g }}</option>
       {% endfor %}
     </select>
+
+    <!-- Subject filter -->
+    <select
+      name="subject"
+      onchange="this.form.submit()"
+      class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
+             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+    >
+      <option value="">All subjects</option>
+      {% for s in subjects %}
+        <option value="{{ s.name }}" {% if s.name == selected_subject %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+
+    <!-- Clear filters -->
+    {% if selected_grade or selected_subject %}
+      <a href="{{ url_for('at_risk.index') }}"
+         class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 shadow-sm hover:text-slate-700 hover:border-slate-300 transition-colors whitespace-nowrap">
+        Clear
+      </a>
+    {% endif %}
   </form>
 {% endblock %}
 

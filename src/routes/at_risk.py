@@ -1,7 +1,7 @@
 from collections import defaultdict
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models import db, Student, WeeklyEntry, RANKING_ORDER
+from models import db, Student, Subject, WeeklyEntry, RANKING_ORDER
 
 at_risk_bp = Blueprint("at_risk", __name__, url_prefix="/at-risk")
 
@@ -38,7 +38,14 @@ def _detect(entries: list) -> tuple[bool, str]:
 @login_required
 def index():
     grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
-    selected_grade = request.args.get("grade", "")
+    selected_grade   = request.args.get("grade", "")
+    selected_subject = request.args.get("subject", "")
+
+    # Subjects list — filtered by grade if one is selected
+    subj_q = Subject.query.order_by(Subject.name)
+    if selected_grade:
+        subj_q = subj_q.filter_by(grade=selected_grade)
+    subjects = subj_q.all()
 
     q = (
         WeeklyEntry.query
@@ -53,6 +60,8 @@ def index():
     )
     if selected_grade:
         q = q.filter(Student.grade == selected_grade)
+    if selected_subject:
+        q = q.join(Subject).filter(Subject.name == selected_subject)
 
     all_entries = q.all()
 
@@ -79,7 +88,6 @@ def index():
                 ],
             })
 
-    # Sort: declining first, then stuck; within each group alphabetically by grade then name
     flagged.sort(key=lambda x: (
         0 if x["reason"] == "declining" else 1,
         x["student"].grade,
@@ -90,5 +98,7 @@ def index():
         "at_risk/list.html",
         flagged=flagged,
         grades=grades,
+        subjects=subjects,
         selected_grade=selected_grade,
+        selected_subject=selected_subject,
     )

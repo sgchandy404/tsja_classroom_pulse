@@ -21,6 +21,14 @@ def _week_label(week, year):
         return f"Week {week}, {year}"
 
 
+def _adjacent_week(week, year, delta):
+    """Return (week, year) shifted by delta weeks (+1 or -1)."""
+    monday = datetime.date.fromisocalendar(year, week, 1)
+    target = monday + datetime.timedelta(weeks=delta)
+    iso = target.isocalendar()
+    return iso.week, iso.year
+
+
 @dashboard_bp.route("/")
 @login_required
 def index():
@@ -92,14 +100,18 @@ def index():
             "counts": {r: counts[r] for r in RANKINGS},
         })
 
+    prev_week, prev_year = _adjacent_week(selected_week, selected_year, -1)
+    next_week, next_year = _adjacent_week(selected_week, selected_year, +1)
+
     return render_template(
         "dashboard/index.html",
         grades=grades,
         selected_grade=selected_grade,
         selected_week=selected_week,
         selected_year=selected_year,
-        available_weeks=available_weeks,
         week_label=_week_label(selected_week, selected_year),
+        prev_week=prev_week, prev_year=prev_year,
+        next_week=next_week, next_year=next_year,
         breakdown=breakdown,
         grade_summaries=grade_summaries,
         rankings=RANKINGS,
