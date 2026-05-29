@@ -9,36 +9,43 @@ at_risk_bp = Blueprint("at_risk", __name__, url_prefix="/at-risk")
 def _detect(entries: list) -> tuple[bool, str]:
     """
     Given a list of WeeklyEntry for one (student, subject) pair,
-    sorted oldest → newest, return (is_at_risk, reason).
-    Needs at least 3 entries to flag.
+    sorted oldest → newest, return (flagged: bool, reason: str).
 
-    Rules (evaluated on last 3 entries):
-    - Stuck:     all 3 weeks are Working Towards (rank 1).
-    - Declining: (a) strict downward trend across all 3 weeks, OR
-                 (b) current week is Working Towards and at least one of
-                     the prior 2 weeks was higher — catches patterns like
-                     EE→WT→WT and ME→EE→WT without false-flagging
-                     recoveries like EE→WT→EE.
+    Reasons (in priority order):
+    - "stuck":     last 3 weeks all Working Towards.
+    - "declining": downward trend ending at WT (no false positives for recoveries).
+    - "improving": current week is strictly better than the previous week,
+                   and student was not consistently at EE already.
+    - "":          nothing notable.
+
+    Needs at least 2 entries for improving; 3 for stuck/declining.
     """
-    if len(entries) < 3:
+    if len(entries) < 2:
         return False, ""
 
-    last3 = entries[-3:]
-    ranks = [RANKING_ORDER[e.ranking] for e in last3]
+    ranks = [RANKING_ORDER[e.ranking] for e in entries]
+    last2 = ranks[-2:]
+    last3 = ranks[-3:] if len(ranks) >= 3 else ranks
 
-    # Stuck: three consecutive weeks at Working Towards
-    if all(r == 1 for r in ranks):
-        return True, "stuck"
+    # --- At-risk checks (require 3 entries) ---
+    if len(last3) == 3:
+        # Stuck: three consecutive weeks at Working Towards
+        if all(r == 1 for r in last3):
+            return True, "stuck"
 
-    # Declining (a): strict downward trend — each week lower than the last
-    if ranks[0] > ranks[1] > ranks[2]:
-        return True, "declining"
+        # Declining (a): strict downward trend
+        if last3[0] > last3[1] > last3[2]:
+            return True, "declining"
 
-    # Declining (b): current week is WT but wasn't always WT in the window
-    # (student slipped to the lowest ranking; excludes recoveries where
-    #  current ranking is above WT)
-    if ranks[-1] == 1 and any(r > 1 for r in ranks[:-1]):
-        return True, "declining"
+        # Declining (b): current is WT but was higher at some point in the window
+        if last3[-1] == 1 and any(r > 1 for r in last3[:-1]):
+            return True, "declining"
+
+    # --- Improving check (requires 2 entries) ---
+    # Current ranking is strictly better than ALL prior weeks in the window
+    # (genuine new high, not a return-to-baseline recovery like EE->WT->EE).
+    if ranks[-1] > max(ranks[:-1]):
+        return True, "improving"
 
     return False, ""
 
@@ -50,11 +57,19 @@ def index():
     selected_grade   = request.args.get("grade", "")
     selected_subject = request.args.get("subject", "")
 
-    # Subjects list — filtered by grade if one is selected
-    subj_q = Subject.query.order_by(Subject.name)
+    # Subject names — deduplicated so cross-grade subjects (e.g. Mathematics)
+    # only appear once in the dropdown when no grade is selected.
     if selected_grade:
-        subj_q = subj_q.filter_by(grade=selected_grade)
-    subjects = subj_q.all()
+        subject_names = [
+            r[0] for r in db.session.query(Subject.name)
+            .filter_by(grade=selected_grade)
+            .distinct().order_by(Subject.name).all()
+        ]
+    else:
+        subject_names = [
+            r[0] for r in db.session.query(Subject.name)
+            .distinct().order_by(Subject.name).all()
+        ]
 
     q = (
         WeeklyEntry.query
@@ -74,40 +89,50 @@ def index():
 
     all_entries = q.all()
 
-    # Group by (student_id, subject_id)
     grouped = defaultdict(list)
     for entry in all_entries:
         grouped[(entry.student_id, entry.subject_id)].append(entry)
 
-    flagged = []
+    flagged    = []
+    improving  = []
+
     for (student_id, subject_id), entries in grouped.items():
-        is_risk, reason = _detect(entries)
-        if is_risk:
-            last = entries[-1]
-            flagged.append({
-                "student":      last.student,
-                "subject":      last.subject,
-                "reason":       reason,
-                "last_ranking": last.ranking,
-                "last_week":    last.iso_week,
-                "last_year":    last.iso_year,
-                "weeks_data":   [
-                    {"week": e.iso_week, "year": e.iso_year, "ranking": e.ranking}
-                    for e in entries[-3:]
-                ],
-            })
+        is_flagged, reason = _detect(entries)
+        if not is_flagged:
+            continue
+
+        last = entries[-1]
+        row = {
+            "student":      last.student,
+            "subject":      last.subject,
+            "reason":       reason,
+            "last_ranking": last.ranking,
+            "last_week":    last.iso_week,
+            "last_year":    last.iso_year,
+            "weeks_data":   [
+                {"week": e.iso_week, "year": e.iso_year, "ranking": e.ranking}
+                for e in entries[-3:]
+            ],
+        }
+
+        if reason == "improving":
+            improving.append(row)
+        else:
+            flagged.append(row)
 
     flagged.sort(key=lambda x: (
         0 if x["reason"] == "declining" else 1,
         x["student"].grade,
         x["student"].name,
     ))
+    improving.sort(key=lambda x: (x["student"].grade, x["student"].name))
 
     return render_template(
         "at_risk/list.html",
         flagged=flagged,
+        improving=improving,
         grades=grades,
-        subjects=subjects,
+        subject_names=subject_names,
         selected_grade=selected_grade,
         selected_subject=selected_subject,
     )
