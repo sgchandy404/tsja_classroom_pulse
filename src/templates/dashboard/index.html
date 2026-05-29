@@ -8,10 +8,11 @@
   <div class="flex items-center gap-2">
 
     <!-- Month + year jump -->
-    <form method="GET" action="{{ url_for('dashboard.index') }}" class="flex items-center gap-1">
+    <form id="week-jump-form" method="GET" action="{{ url_for('dashboard.index') }}" class="flex items-center gap-1">
       <input type="hidden" name="grade" value="{{ selected_grade or '' }}" />
       <select
         name="month"
+        onchange="document.getElementById('week-jump-form').submit()"
         class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
                focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
       >
@@ -21,6 +22,7 @@
       </select>
       <select
         name="jump_year"
+        onchange="document.getElementById('week-jump-form').submit()"
         class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
                focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
       >
@@ -28,11 +30,6 @@
           <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
         {% endfor %}
       </select>
-      <button type="submit"
-              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm
-                     hover:bg-slate-50 hover:text-slate-800 transition-colors whitespace-nowrap">
-        Go
-      </button>
     </form>
 
     <!-- Week prev/next navigation -->
