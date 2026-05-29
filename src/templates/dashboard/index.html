@@ -5,23 +5,55 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block header_actions %}
-  <!-- Week prev/next navigation -->
-  <div class="flex items-center gap-1 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-    <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=prev_week, year=prev_year) }}"
-       class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
-      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-      </svg>
-    </a>
-    <span class="px-3 py-1.5 text-xs font-medium text-slate-700 border-x border-slate-200 whitespace-nowrap">
-      {{ week_label }}
-    </span>
-    <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=next_week, year=next_year) }}"
-       class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
-      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-      </svg>
-    </a>
+  <div class="flex items-center gap-2">
+
+    <!-- Month + year jump -->
+    <form method="GET" action="{{ url_for('dashboard.index') }}" class="flex items-center gap-1">
+      <input type="hidden" name="grade" value="{{ selected_grade or '' }}" />
+      <select
+        name="month"
+        class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      >
+        {% for num, name in months %}
+          <option value="{{ num }}" {% if num == selected_month %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+      <select
+        name="jump_year"
+        class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      >
+        {% for y in year_range %}
+          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm
+                     hover:bg-slate-50 hover:text-slate-800 transition-colors whitespace-nowrap">
+        Go
+      </button>
+    </form>
+
+    <!-- Week prev/next navigation -->
+    <div class="flex items-center gap-0 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=prev_week, year=prev_year) }}"
+         class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        </svg>
+      </a>
+      <span class="px-3 py-1.5 text-xs font-medium text-slate-700 border-x border-slate-200 whitespace-nowrap">
+        {{ week_label }}
+      </span>
+      <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=next_week, year=next_year) }}"
+         class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+      </a>
+    </div>
+
   </div>
 {% endblock %}
 
