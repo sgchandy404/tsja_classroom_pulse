@@ -71,7 +71,7 @@
           Dashboard
         </a>
 
-        <a href="#"
+        <a href="{{ url_for('entry.form') }}"
            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
                   {% if request.endpoint and request.endpoint.startswith('entry.') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">

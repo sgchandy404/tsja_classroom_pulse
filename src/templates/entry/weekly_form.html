@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly Entry — Classroom Pulse{% endblock %}
+{% block page_title %}Weekly Entry{% endblock %}
+
+{% block content %}
+<div
+  x-data="entryForm()"
+  x-init="init('{{ selected_grade | e }}')"
+>
+
+  <!-- Filters row -->
+  <div class="flex flex-wrap items-end gap-4 mb-6">
+
+    <!-- Grade selector -->
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Grade</label>
+      <select
+        x-model="grade"
+        @change="loadGradeData()"
+        class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      >
+        <option value="">— select grade —</option>
+        {% for g in grades %}
+          <option value="{{ g }}">{{ g }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Week -->
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Week</label>
+      <input
+        type="number" x-model="week" min="1" max="53"
+        class="w-20 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      />
+    </div>
+
+    <!-- Year -->
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Year</label>
+      <input
+        type="number" x-model="year" min="2020" max="2099"
+        class="w-28 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      />
+    </div>
+
+    <!-- Submit -->
+    <button
+      @click="submitForm()"
+      :disabled="!grade || students.length === 0"
+      class="ml-auto rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
+             hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+    >
+      Save Rankings
+    </button>
+  </div>
+
+  <!-- Loading state -->
+  <div x-show="loading" class="flex items-center gap-2 text-sm text-slate-400 py-12 justify-center">
+    <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+    </svg>
+    Loading…
+  </div>
+
+  <!-- Empty prompt -->
+  <div
+    x-show="!loading && !grade"
+    class="flex items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200"
+  >
+    <p class="text-sm text-slate-400">Select a grade above to begin entering rankings.</p>
+  </div>
+
+  <div
+    x-show="!loading && grade && students.length === 0"
+    class="flex items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200"
+  >
+    <p class="text-sm text-slate-400">No students found for this grade. Add students first.</p>
+  </div>
+
+  <!-- Entry table -->
+  <div x-show="!loading && students.length > 0 && subjects.length > 0" class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-100 bg-slate-50">
+          <th class="sticky left-0 z-10 bg-slate-50 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+            Roll No.
+          </th>
+          <th class="sticky left-16 z-10 bg-slate-50 px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+            Student
+          </th>
+          <template x-for="subject in subjects" :key="subject.id">
+            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap"
+                x-text="subject.name">
+            </th>
+          </template>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <template x-for="student in students" :key="student.id">
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="sticky left-0 bg-white px-5 py-3 font-mono text-xs text-slate-400 whitespace-nowrap"
+                x-text="student.roll_number">
+            </td>
+            <td class="sticky left-16 bg-white px-5 py-3 font-medium text-slate-800 whitespace-nowrap"
+                x-text="student.name">
+            </td>
+            <template x-for="subject in subjects" :key="subject.id">
+              <td class="px-4 py-2.5">
+                <select
+                  :name="`ranking_${student.id}_${subject.id}`"
+                  x-model="rankings[`${student.id}_${subject.id}`]"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700
+                         focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  :class="{
+                    'border-red-200 bg-red-50 text-red-700':   rankings[`${student.id}_${subject.id}`] === 'Working Towards',
+                    'border-amber-200 bg-amber-50 text-amber-700': rankings[`${student.id}_${subject.id}`] === 'Meets Expectations',
+                    'border-green-200 bg-green-50 text-green-700':  rankings[`${student.id}_${subject.id}`] === 'Exceeds Expectations',
+                  }"
+                >
+                  <option value="">— select —</option>
+                  {% for r in rankings %}
+                    <option value="{{ r }}">{{ r }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+            </template>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Hidden form for POST submit -->
+  <form id="entry-form" method="POST" action="{{ url_for('entry.submit') }}" class="hidden">
+    <input type="hidden" name="iso_week" :value="week" />
+    <input type="hidden" name="iso_year" :value="year" />
+    <template x-for="student in students" :key="student.id">
+      <template x-for="subject in subjects" :key="subject.id">
+        <input
+          type="hidden"
+          :name="`ranking_${student.id}_${subject.id}`"
+          :value="rankings[`${student.id}_${subject.id}`] || ''"
+        />
+      </template>
+    </template>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function entryForm() {
+  return {
+    grade: '',
+    week: {{ current_week }},
+    year: {{ current_year }},
+    students: [],
+    subjects: [],
+    rankings: {},
+    loading: false,
+
+    init(selectedGrade) {
+      if (selectedGrade) {
+        this.grade = selectedGrade;
+        this.loadGradeData();
+      }
+    },
+
+    async loadGradeData() {
+      if (!this.grade) { this.students = []; this.subjects = []; return; }
+      this.loading = true;
+      const [sRes, subRes] = await Promise.all([
+        fetch(`/entry/students?grade=${encodeURIComponent(this.grade)}`),
+        fetch(`/entry/subjects?grade=${encodeURIComponent(this.grade)}`),
+      ]);
+      this.students = await sRes.json();
+      this.subjects = await subRes.json();
+      this.rankings = {};
+      this.loading = false;
+    },
+
+    submitForm() {
+      // Sync select values into hidden form inputs then submit
+      document.getElementById('entry-form').submit();
+    },
+  };
+}
+</script>
+{% endblock %}

@@ -1,9 +1,3 @@
-{% extends "base.html" %}
-
-{% block title %}Sign In — Classroom Pulse{% endblock %}
-
-{# Override body entirely — no sidebar on login page #}
-{% block body %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +12,7 @@
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+          fontFamily: { sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
         }
       }
     }
@@ -42,7 +36,6 @@
     <!-- Card -->
     <div class="rounded-2xl bg-slate-900 border border-slate-800 px-8 py-8 shadow-xl">
 
-      <!-- Error flash -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
           <div class="mb-5 flex items-center gap-2.5 rounded-lg bg-red-950 border border-red-800 px-4 py-3 text-sm text-red-300">
@@ -56,54 +49,36 @@
 
       <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5">
 
-        <!-- Username -->
         <div>
-          <label for="username" class="block text-sm font-medium text-slate-300 mb-1.5">
-            Username
-          </label>
+          <label for="username" class="block text-sm font-medium text-slate-300 mb-1.5">Username</label>
           <input
-            id="username"
-            name="username"
-            type="text"
-            autocomplete="username"
-            required
-            autofocus
+            id="username" name="username" type="text"
+            autocomplete="username" required autofocus
             class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder-slate-500
                    focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             placeholder="Enter your username"
           />
         </div>
 
-        <!-- Password -->
         <div>
-          <label for="password" class="block text-sm font-medium text-slate-300 mb-1.5">
-            Password
-          </label>
+          <label for="password" class="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
           <input
-            id="password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            required
+            id="password" name="password" type="password"
+            autocomplete="current-password" required
             class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder-slate-500
                    focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             placeholder="Enter your password"
           />
         </div>
 
-        <!-- Remember me -->
         <div class="flex items-center gap-2.5">
           <input
-            id="remember"
-            name="remember"
-            type="checkbox"
-            value="1"
+            id="remember" name="remember" type="checkbox" value="1"
             class="h-4 w-4 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
           />
           <label for="remember" class="text-sm text-slate-400 select-none">Remember me</label>
         </div>
 
-        <!-- Submit -->
         <button
           type="submit"
           class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm
@@ -115,11 +90,8 @@
       </form>
     </div>
 
-    <p class="mt-6 text-center text-xs text-slate-600">
-      Classroom Pulse &mdash; TSJA
-    </p>
+    <p class="mt-6 text-center text-xs text-slate-600">Classroom Pulse &mdash; TSJA</p>
   </div>
 
 </body>
 </html>
-{% endblock %}
