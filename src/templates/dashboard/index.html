@@ -1,10 +1,192 @@
 {% extends "base.html" %}
+{% from "macros.html" import ranking_badge %}
 
 {% block title %}Dashboard — Classroom Pulse{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
+{% block header_actions %}
+  <!-- Week selector -->
+  <form method="GET" action="{{ url_for('dashboard.index') }}" class="flex items-center gap-2">
+    <input type="hidden" name="grade" value="{{ selected_grade or '' }}" />
+    <select
+      name="week_year"
+      onchange="
+        const [w, y] = this.value.split(':');
+        this.form.querySelector('[name=week]').value = w;
+        this.form.querySelector('[name=year]').value = y;
+        this.form.submit();
+      "
+      class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
+             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+    >
+      {% if not available_weeks %}
+        <option>No data yet</option>
+      {% endif %}
+      {% for w in available_weeks %}
+        <option
+          value="{{ w.week }}:{{ w.year }}"
+          {% if w.week == selected_week and w.year == selected_year %}selected{% endif %}
+        >{{ w.label }}</option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="week" value="{{ selected_week }}" />
+    <input type="hidden" name="year" value="{{ selected_year }}" />
+  </form>
+{% endblock %}
+
 {% block content %}
-<div class="flex items-center justify-center h-64 rounded-xl border-2 border-dashed border-slate-200">
-  <p class="text-sm text-slate-400">Dashboard coming in Phase 4</p>
+
+<!-- Grade summary cards -->
+{% if grade_summaries %}
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+  {% for gs in grade_summaries %}
+  <a href="{{ url_for('dashboard.index', grade=gs.grade, week=selected_week, year=selected_year) }}"
+     class="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md
+            {% if gs.grade == selected_grade %}border-indigo-300 ring-1 ring-indigo-200{% else %}border-slate-200{% endif %}">
+    <div class="flex items-start justify-between mb-3">
+      <p class="text-sm font-semibold text-slate-800">{{ gs.grade }}</p>
+      {% if gs.grade == selected_grade %}
+        <span class="text-xs font-medium text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">Viewing</span>
+      {% endif %}
+    </div>
+    {% if gs.total > 0 %}
+      <!-- Mini stacked bar -->
+      <div class="flex h-1.5 w-full rounded-full overflow-hidden gap-px mb-3">
+        {% set wt_pct  = (gs.counts['Working Towards']    / gs.total * 100) | round | int %}
+        {% set me_pct  = (gs.counts['Meets Expectations'] / gs.total * 100) | round | int %}
+        {% set ee_pct  = 100 - wt_pct - me_pct %}
+        {% if wt_pct > 0  %}<div class="bg-red-400"   style="width:{{ wt_pct }}%"></div>{% endif %}
+        {% if me_pct > 0  %}<div class="bg-amber-400" style="width:{{ me_pct }}%"></div>{% endif %}
+        {% if ee_pct > 0  %}<div class="bg-green-400" style="width:{{ ee_pct }}%"></div>{% endif %}
+      </div>
+      <div class="flex gap-3 text-xs text-slate-500">
+        <span><span class="font-medium text-red-600">{{ gs.counts['Working Towards'] }}</span> WT</span>
+        <span><span class="font-medium text-amber-600">{{ gs.counts['Meets Expectations'] }}</span> ME</span>
+        <span><span class="font-medium text-green-600">{{ gs.counts['Exceeds Expectations'] }}</span> EE</span>
+      </div>
+    {% else %}
+      <p class="text-xs text-slate-400">No entries for this week.</p>
+    {% endif %}
+  </a>
+  {% endfor %}
 </div>
+{% endif %}
+
+<!-- Grade filter tabs (if grades exist) -->
+{% if grades %}
+<div class="flex items-center gap-1 mb-6 flex-wrap">
+  {% for g in grades %}
+    <a href="{{ url_for('dashboard.index', grade=g, week=selected_week, year=selected_year) }}"
+       class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors
+              {% if g == selected_grade %}bg-indigo-600 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600{% endif %}">
+      {{ g }}
+    </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Per-subject breakdown table -->
+{% if selected_grade %}
+  {% if breakdown %}
+    <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-800">{{ selected_grade }} — Subject Breakdown</h2>
+          <p class="text-xs text-slate-400 mt-0.5">{{ week_label }}</p>
+        </div>
+      </div>
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-100">
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-red-500">Working Towards</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-amber-500">Meets Expectations</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-green-600">Exceeds Expectations</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Distribution</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Coverage</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in breakdown %}
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">{{ row.subject }}</td>
+
+            <!-- WT count + pill -->
+            <td class="px-4 py-4 text-center">
+              {% if row.counts['Working Towards'] > 0 %}
+                <span class="inline-flex items-center justify-center min-w-[2rem] rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                  {{ row.counts['Working Towards'] }}
+                </span>
+              {% else %}
+                <span class="text-slate-300">—</span>
+              {% endif %}
+            </td>
+
+            <!-- ME count -->
+            <td class="px-4 py-4 text-center">
+              {% if row.counts['Meets Expectations'] > 0 %}
+                <span class="inline-flex items-center justify-center min-w-[2rem] rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  {{ row.counts['Meets Expectations'] }}
+                </span>
+              {% else %}
+                <span class="text-slate-300">—</span>
+              {% endif %}
+            </td>
+
+            <!-- EE count -->
+            <td class="px-4 py-4 text-center">
+              {% if row.counts['Exceeds Expectations'] > 0 %}
+                <span class="inline-flex items-center justify-center min-w-[2rem] rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                  {{ row.counts['Exceeds Expectations'] }}
+                </span>
+              {% else %}
+                <span class="text-slate-300">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Stacked bar -->
+            <td class="px-4 py-4 w-40">
+              {% if row.total > 0 %}
+                <div class="flex h-2 w-full rounded-full overflow-hidden gap-px">
+                  {% if row.pct['Working Towards'] > 0 %}
+                    <div class="bg-red-400 rounded-l-full" style="width:{{ row.pct['Working Towards'] }}%" title="Working Towards: {{ row.pct['Working Towards'] }}%"></div>
+                  {% endif %}
+                  {% if row.pct['Meets Expectations'] > 0 %}
+                    <div class="bg-amber-400" style="width:{{ row.pct['Meets Expectations'] }}%" title="Meets Expectations: {{ row.pct['Meets Expectations'] }}%"></div>
+                  {% endif %}
+                  {% if row.pct['Exceeds Expectations'] > 0 %}
+                    <div class="bg-green-400 rounded-r-full" style="width:{{ row.pct['Exceeds Expectations'] }}%" title="Exceeds Expectations: {{ row.pct['Exceeds Expectations'] }}%"></div>
+                  {% endif %}
+                </div>
+              {% else %}
+                <div class="h-2 w-full rounded-full bg-slate-100"></div>
+              {% endif %}
+            </td>
+
+            <!-- Coverage -->
+            <td class="px-4 py-4 text-right text-xs text-slate-400 whitespace-nowrap">
+              {{ row.total }} / {{ row.student_count }} students
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% else %}
+    <div class="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200">
+      <p class="text-sm font-medium text-slate-500">No entries for {{ selected_grade }} this week.</p>
+      <a href="{{ url_for('entry.form', grade=selected_grade) }}"
+         class="mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-500">
+        Enter rankings →
+      </a>
+    </div>
+  {% endif %}
+
+{% else %}
+  <div class="flex items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200">
+    <p class="text-sm text-slate-400">No grades found. Add students and subjects first.</p>
+  </div>
+{% endif %}
+
 {% endblock %}
