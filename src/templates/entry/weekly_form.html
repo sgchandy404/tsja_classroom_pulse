@@ -28,24 +28,25 @@
       </select>
     </div>
 
-    <!-- Week -->
+    <!-- Week selector -->
     <div>
       <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Week</label>
-      <input
-        type="number" x-model="week" min="1" max="53"
-        class="w-20 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+      <select
+        @change="
+          const [w, y] = $event.target.value.split(':');
+          week = parseInt(w);
+          year = parseInt(y);
+        "
+        class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
                focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-      />
-    </div>
-
-    <!-- Year -->
-    <div>
-      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Year</label>
-      <input
-        type="number" x-model="year" min="2020" max="2099"
-        class="w-28 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
-               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-      />
+      >
+        {% for opt in week_options %}
+          <option
+            value="{{ opt.week }}:{{ opt.year }}"
+            {% if opt.week == current_week and opt.year == current_year %}selected{% endif %}
+          >{{ opt.label }}</option>
+        {% endfor %}
+      </select>
     </div>
 
     <!-- Submit -->

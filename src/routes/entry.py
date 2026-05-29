@@ -12,6 +12,30 @@ def _current_week():
     return iso.week, iso.year
 
 
+def _week_label(week, year):
+    try:
+        monday = datetime.date.fromisocalendar(year, week, 1)
+        sunday = monday + datetime.timedelta(days=6)
+        return f"Wk {week} · {monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
+    except ValueError:
+        return f"Week {week}, {year}"
+
+
+def _week_options(centre_week, centre_year, past=8, future=2):
+    """Return a list of {week, year, label} dicts spanning past..future weeks from centre."""
+    centre = datetime.date.fromisocalendar(centre_year, centre_week, 1)
+    options = []
+    for delta in range(-past, future + 1):
+        day = centre + datetime.timedelta(weeks=delta)
+        iso = day.isocalendar()
+        options.append({
+            "week":  iso.week,
+            "year":  iso.year,
+            "label": _week_label(iso.week, iso.year),
+        })
+    return options
+
+
 @entry_bp.route("/")
 @login_required
 def form():
@@ -25,6 +49,7 @@ def form():
         rankings=RANKINGS,
         current_week=week,
         current_year=year,
+        week_options=_week_options(week, year),
     )
 
 
