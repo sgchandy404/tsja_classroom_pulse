@@ -11,6 +11,14 @@ def _detect(entries: list) -> tuple[bool, str]:
     Given a list of WeeklyEntry for one (student, subject) pair,
     sorted oldest → newest, return (is_at_risk, reason).
     Needs at least 3 entries to flag.
+
+    Rules (evaluated on last 3 entries):
+    - Stuck:     all 3 weeks are Working Towards (rank 1).
+    - Declining: (a) strict downward trend across all 3 weeks, OR
+                 (b) current week is Working Towards and at least one of
+                     the prior 2 weeks was higher — catches patterns like
+                     EE→WT→WT and ME→EE→WT without false-flagging
+                     recoveries like EE→WT→EE.
     """
     if len(entries) < 3:
         return False, ""
@@ -22,14 +30,15 @@ def _detect(entries: list) -> tuple[bool, str]:
     if all(r == 1 for r in ranks):
         return True, "stuck"
 
-    # Declining: two consecutive drops
-    if ranks[1] < ranks[0] and ranks[2] < ranks[1]:
+    # Declining (a): strict downward trend — each week lower than the last
+    if ranks[0] > ranks[1] > ranks[2]:
         return True, "declining"
 
-    # Severe single drop: Exceeds Expectations → Working Towards
-    for i in range(len(ranks) - 1):
-        if ranks[i] == 3 and ranks[i + 1] == 1:
-            return True, "declining"
+    # Declining (b): current week is WT but wasn't always WT in the window
+    # (student slipped to the lowest ranking; excludes recoveries where
+    #  current ranking is above WT)
+    if ranks[-1] == 1 and any(r > 1 for r in ranks[:-1]):
+        return True, "declining"
 
     return False, ""
 
