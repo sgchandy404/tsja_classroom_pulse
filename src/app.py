@@ -21,9 +21,13 @@ def create_app() -> Flask:
     from auth import auth_bp
     from routes.dashboard import dashboard_bp
     from routes.entry import entry_bp
+    from routes.at_risk import at_risk_bp
+    from routes.students import students_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(entry_bp)
+    app.register_blueprint(at_risk_bp)
+    app.register_blueprint(students_bp)
 
     with app.app_context():
         db.create_all()

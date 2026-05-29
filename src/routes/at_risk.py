@@ -1,0 +1,94 @@
+from collections import defaultdict
+from flask import Blueprint, render_template, request
+from flask_login import login_required
+from models import db, Student, WeeklyEntry, RANKING_ORDER
+
+at_risk_bp = Blueprint("at_risk", __name__, url_prefix="/at-risk")
+
+
+def _detect(entries: list) -> tuple[bool, str]:
+    """
+    Given a list of WeeklyEntry for one (student, subject) pair,
+    sorted oldest → newest, return (is_at_risk, reason).
+    Needs at least 3 entries to flag.
+    """
+    if len(entries) < 3:
+        return False, ""
+
+    last3 = entries[-3:]
+    ranks = [RANKING_ORDER[e.ranking] for e in last3]
+
+    # Stuck: three consecutive weeks at Working Towards
+    if all(r == 1 for r in ranks):
+        return True, "stuck"
+
+    # Declining: two consecutive drops
+    if ranks[1] < ranks[0] and ranks[2] < ranks[1]:
+        return True, "declining"
+
+    # Severe single drop: Exceeds Expectations → Working Towards
+    for i in range(len(ranks) - 1):
+        if ranks[i] == 3 and ranks[i + 1] == 1:
+            return True, "declining"
+
+    return False, ""
+
+
+@at_risk_bp.route("/")
+@login_required
+def index():
+    grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    selected_grade = request.args.get("grade", "")
+
+    q = (
+        WeeklyEntry.query
+        .join(Student)
+        .order_by(
+            Student.grade,
+            WeeklyEntry.student_id,
+            WeeklyEntry.subject_id,
+            WeeklyEntry.iso_year,
+            WeeklyEntry.iso_week,
+        )
+    )
+    if selected_grade:
+        q = q.filter(Student.grade == selected_grade)
+
+    all_entries = q.all()
+
+    # Group by (student_id, subject_id)
+    grouped = defaultdict(list)
+    for entry in all_entries:
+        grouped[(entry.student_id, entry.subject_id)].append(entry)
+
+    flagged = []
+    for (student_id, subject_id), entries in grouped.items():
+        is_risk, reason = _detect(entries)
+        if is_risk:
+            last = entries[-1]
+            flagged.append({
+                "student":      last.student,
+                "subject":      last.subject,
+                "reason":       reason,
+                "last_ranking": last.ranking,
+                "last_week":    last.iso_week,
+                "last_year":    last.iso_year,
+                "weeks_data":   [
+                    {"week": e.iso_week, "year": e.iso_year, "ranking": e.ranking}
+                    for e in entries[-3:]
+                ],
+            })
+
+    # Sort: declining first, then stuck; within each group alphabetically by grade then name
+    flagged.sort(key=lambda x: (
+        0 if x["reason"] == "declining" else 1,
+        x["student"].grade,
+        x["student"].name,
+    ))
+
+    return render_template(
+        "at_risk/list.html",
+        flagged=flagged,
+        grades=grades,
+        selected_grade=selected_grade,
+    )
