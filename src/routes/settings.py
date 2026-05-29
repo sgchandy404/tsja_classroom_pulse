@@ -1,10 +1,12 @@
 """
 Settings blueprint — manage academic years and terms.
+Admin-only.
 """
 import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from models import db, AcademicYear, Term
+from permissions import require_role
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -65,6 +67,7 @@ def _date_str_to_iso(date_str: str):
 
 @settings_bp.route("/")
 @login_required
+@require_role("admin")
 def index():
     years = AcademicYear.query.order_by(AcademicYear.start_year.desc()).all()
     return render_template("settings/index.html", years=years)
@@ -72,6 +75,7 @@ def index():
 
 @settings_bp.route("/years/new", methods=["GET", "POST"])
 @login_required
+@require_role("admin")
 def new_year():
     if request.method == "POST":
         start_year = int(request.form["start_year"])
@@ -100,6 +104,7 @@ def new_year():
 
 @settings_bp.route("/years/<int:year_id>", methods=["GET", "POST"])
 @login_required
+@require_role("admin")
 def edit_year(year_id):
     ay = AcademicYear.query.get_or_404(year_id)
 
@@ -138,6 +143,16 @@ def edit_year(year_id):
                 db.session.commit()
                 flash("Term boundaries saved.", "success")
 
+            return redirect(url_for("settings.edit_year", year_id=year_id))
+
+        if action == "toggle_lock":
+            term_id = request.form.get("term_id", type=int)
+            term = Term.query.get(term_id)
+            if term and term.academic_year_id == ay.id:
+                term.is_locked = not term.is_locked
+                db.session.commit()
+                state = "locked" if term.is_locked else "unlocked"
+                flash(f"{term.name} {state}.", "success")
             return redirect(url_for("settings.edit_year", year_id=year_id))
 
         if action == "delete_year":

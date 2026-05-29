@@ -1,9 +1,10 @@
 import json
 from collections import defaultdict
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, abort
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKING_ORDER
 from routes.at_risk import _detect, _active_term_filter
+from permissions import perms as get_perms
 
 students_bp = Blueprint("students", __name__, url_prefix="/students")
 
@@ -12,6 +13,10 @@ students_bp = Blueprint("students", __name__, url_prefix="/students")
 @login_required
 def detail(student_id):
     student = Student.query.get_or_404(student_id)
+
+    p = get_perms()
+    if not p.can_view_grade(student.grade):
+        abort(403)
 
     ay, terms, selected_term = _active_term_filter()
 

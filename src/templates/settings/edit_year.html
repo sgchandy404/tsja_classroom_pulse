@@ -60,7 +60,8 @@
           <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Term</th>
           <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Start date</th>
           <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">End date</th>
-          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 text-slate-400">Duration</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Lock</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -91,6 +92,18 @@
             {% if row.term.start_date and row.term.end_date %}
               {{ ((row.term.end_date - row.term.start_date).days // 7) }} weeks
             {% endif %}
+          </td>
+          <td class="px-4 py-4 whitespace-nowrap">
+            <form method="POST" action="{{ url_for('settings.edit_year', year_id=ay.id) }}" class="inline">
+              <input type="hidden" name="action" value="toggle_lock" />
+              <input type="hidden" name="term_id" value="{{ row.term.id }}" />
+              <button type="submit"
+                      class="rounded-full px-3 py-1 text-xs font-semibold transition-colors
+                             {{ 'bg-red-100 text-red-700 hover:bg-red-200' if row.term.is_locked
+                                else 'bg-slate-100 text-slate-500 hover:bg-slate-200' }}">
+                {{ '🔒 Locked' if row.term.is_locked else '🔓 Unlocked' }}
+              </button>
+            </form>
           </td>
         </tr>
         {% endfor %}

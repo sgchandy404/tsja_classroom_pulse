@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} — Users — Classroom Pulse{% endblock %}
+{% block page_title %}{{ user.username }}{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.index') }}" class="text-sm text-slate-500 hover:text-slate-700">← All users</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Status + danger zone -->
+<div class="mb-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+  <div class="flex items-center gap-3">
+    <div class="flex h-10 w-10 items-center justify-center rounded-full
+                {{ 'bg-indigo-100 text-indigo-700' if user.active else 'bg-slate-100 text-slate-400' }}
+                text-base font-bold">
+      {{ user.username[0].upper() }}
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-slate-800">{{ user.username }}</p>
+      <p class="text-xs text-slate-400">{{ 'Active' if user.active else 'Inactive' }}</p>
+    </div>
+  </div>
+  <form method="POST" class="flex items-center gap-3">
+    <input type="hidden" name="action" value="toggle_active" />
+    <button type="submit"
+            {% if user.username == 'admin' %}disabled title="Cannot deactivate primary admin"{% endif %}
+            class="rounded-lg border px-4 py-1.5 text-xs font-semibold transition-colors
+                   {{ 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100' if user.active
+                      else 'border-green-200 bg-green-50 text-green-600 hover:bg-green-100' }}
+                   disabled:opacity-40 disabled:cursor-not-allowed">
+      {{ 'Deactivate' if user.active else 'Reactivate' }}
+    </button>
+  </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Left: roles -->
+  <div class="lg:col-span-2">
+    <form method="POST">
+      <input type="hidden" name="action" value="save_roles" />
+      <div class="rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm mb-4">
+        {% include "admin/_role_form.html" %}
+      </div>
+      <button type="submit"
+              class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
+                     hover:bg-indigo-500 transition-colors">
+        Save Role Assignments
+      </button>
+    </form>
+  </div>
+
+  <!-- Right: change password -->
+  <div>
+    <div class="rounded-xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-4">Change Password</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="change_password" />
+        <input type="password" name="new_password" placeholder="New password (min 6 chars)"
+               minlength="6" required autocomplete="new-password"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 mb-3" />
+        <button type="submit"
+                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium
+                       text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 transition-colors">
+          Update Password
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

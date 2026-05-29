@@ -1,7 +1,8 @@
 from collections import defaultdict
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, abort
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKING_ORDER
+from permissions import perms as get_perms
 
 at_risk_bp = Blueprint("at_risk", __name__, url_prefix="/at-risk")
 
@@ -80,9 +81,17 @@ def _active_term_filter():
 @at_risk_bp.route("/")
 @login_required
 def index():
-    grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    p = get_perms()
+    all_grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    vg = p.visible_grades()
+    grades = all_grades if vg is None else [g for g in all_grades if g in vg]
+
     selected_grade   = request.args.get("grade", "")
     selected_subject = request.args.get("subject", "")
+
+    # Guard against accessing a grade out of scope
+    if selected_grade and not p.can_view_grade(selected_grade):
+        abort(403)
 
     ay, terms, selected_term = _active_term_filter()
 
@@ -113,6 +122,9 @@ def index():
     )
     if selected_grade:
         q = q.filter(Student.grade == selected_grade)
+    elif vg is not None:
+        # Restrict to visible grades
+        q = q.filter(Student.grade.in_(list(vg)))
     if selected_subject:
         q = q.join(Subject).filter(Subject.name == selected_subject)
 

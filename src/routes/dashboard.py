@@ -1,8 +1,9 @@
 import datetime
 from collections import defaultdict
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, abort
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, RANKINGS
+from permissions import perms as get_perms
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -55,8 +56,16 @@ def index():
         except (ValueError, TypeError):
             pass
 
-    # Available grades and weeks for filters
-    grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    # Available grades — filter by permission
+    p = get_perms()
+    all_grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    vg = p.visible_grades()
+    grades = all_grades if vg is None else [g for g in all_grades if g in vg]
+
+    # If a specific grade is requested but not visible, 403
+    requested_grade = request.args.get("grade", "")
+    if requested_grade and not p.can_view_grade(requested_grade):
+        abort(403)
 
     week_rows = (
         db.session.query(WeeklyEntry.iso_week, WeeklyEntry.iso_year)

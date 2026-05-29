@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Users — Classroom Pulse{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.config') }}"
+     class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm
+            hover:border-slate-300 hover:text-slate-800 transition-colors">
+    ⚙ App Config
+  </a>
+  <a href="{{ url_for('admin.new_user') }}"
+     class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
+            hover:bg-indigo-500 transition-colors">
+    + New User
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+  <table class="min-w-full text-sm">
+    <thead>
+      <tr class="border-b border-slate-100 bg-slate-50">
+        <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Username</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Roles</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+        <th class="px-4 py-3.5"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for user in users %}
+      <tr class="hover:bg-slate-50 transition-colors {% if not user.active %}opacity-50{% endif %}">
+        <td class="px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full
+                        {{ 'bg-indigo-100 text-indigo-700' if user.active else 'bg-slate-100 text-slate-400' }}
+                        text-xs font-semibold">
+              {{ user.username[0].upper() }}
+            </div>
+            <span class="font-medium text-slate-800">{{ user.username }}</span>
+          </div>
+        </td>
+        <td class="px-4 py-4">
+          <div class="flex flex-wrap gap-1.5">
+            {% for label in user.display_roles() %}
+              <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                {% if 'Admin' in label %}bg-indigo-100 text-indigo-700
+                {% elif 'Coordinator' in label %}bg-purple-100 text-purple-700
+                {% elif 'In-Charge' in label %}bg-amber-100 text-amber-700
+                {% elif 'Teacher' in label %}bg-green-100 text-green-700
+                {% else %}bg-slate-100 text-slate-500{% endif %}">
+                {{ label }}
+              </span>
+            {% endfor %}
+          </div>
+        </td>
+        <td class="px-4 py-4">
+          {% if user.active %}
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-600">
+              <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Active
+            </span>
+          {% else %}
+            <span class="text-xs text-slate-400">Inactive</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-4 text-right">
+          <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"
+             class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
