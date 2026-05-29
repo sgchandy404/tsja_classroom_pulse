@@ -1,3 +1,4 @@
+import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,6 +7,58 @@ db = SQLAlchemy()
 
 RANKINGS = ["Working Towards", "Meets Expectations", "Exceeds Expectations"]
 RANKING_ORDER = {r: i + 1 for i, r in enumerate(RANKINGS)}
+
+
+class AcademicYear(db.Model):
+    __tablename__ = "academic_years"
+    id         = db.Column(db.Integer, primary_key=True)
+    label      = db.Column(db.String(20), nullable=False, unique=True)  # e.g. "2026–27"
+    start_year = db.Column(db.Integer, nullable=False, unique=True)     # April year, e.g. 2026
+    is_active  = db.Column(db.Boolean, nullable=False, default=False)
+
+    terms = db.relationship("Term", back_populates="academic_year",
+                            cascade="all, delete-orphan", order_by="Term.id")
+
+    @property
+    def end_year(self):
+        return self.start_year + 1
+
+
+class Term(db.Model):
+    __tablename__ = "terms"
+    id               = db.Column(db.Integer, primary_key=True)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey("academic_years.id"), nullable=False)
+    name             = db.Column(db.String(20), nullable=False)   # "Term 1", "Term 2", "Term 3"
+    start_iso_week   = db.Column(db.Integer, nullable=False)
+    start_iso_year   = db.Column(db.Integer, nullable=False)
+    end_iso_week     = db.Column(db.Integer, nullable=False)
+    end_iso_year     = db.Column(db.Integer, nullable=False)
+
+    academic_year = db.relationship("AcademicYear", back_populates="terms")
+
+    @property
+    def start_date(self):
+        try:
+            return datetime.date.fromisocalendar(self.start_iso_year, self.start_iso_week, 1)
+        except ValueError:
+            return None
+
+    @property
+    def end_date(self):
+        try:
+            return datetime.date.fromisocalendar(self.end_iso_year, self.end_iso_week, 7)
+        except ValueError:
+            return None
+
+    def contains_week(self, iso_week: int, iso_year: int) -> bool:
+        """Return True if the given ISO week falls within this term."""
+        # Compare as (year, week) tuples — fully handles year boundaries
+        w = (iso_year, iso_week)
+        return (self.start_iso_year, self.start_iso_week) <= w <= (self.end_iso_year, self.end_iso_week)
+
+    __table_args__ = (
+        db.UniqueConstraint("academic_year_id", "name", name="uq_term_per_year"),
+    )
 
 
 class User(UserMixin, db.Model):

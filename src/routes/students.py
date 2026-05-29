@@ -1,9 +1,9 @@
 import json
 from collections import defaultdict
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models import db, Student, Subject, WeeklyEntry, RANKING_ORDER
-from routes.at_risk import _detect
+from models import db, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKING_ORDER
+from routes.at_risk import _detect, _active_term_filter
 
 students_bp = Blueprint("students", __name__, url_prefix="/students")
 
@@ -13,13 +13,18 @@ students_bp = Blueprint("students", __name__, url_prefix="/students")
 def detail(student_id):
     student = Student.query.get_or_404(student_id)
 
-    # All entries for this student, oldest first
-    entries = (
+    ay, terms, selected_term = _active_term_filter()
+
+    # All entries for this student, oldest first, optionally filtered to selected term
+    q = (
         WeeklyEntry.query
         .filter_by(student_id=student_id)
         .order_by(WeeklyEntry.iso_year, WeeklyEntry.iso_week)
-        .all()
     )
+    entries = q.all()
+
+    if selected_term:
+        entries = [e for e in entries if selected_term.contains_week(e.iso_week, e.iso_year)]
 
     # Ordered unique weeks
     weeks_seen = []
@@ -101,4 +106,7 @@ def detail(student_id):
         grade_students_json=grade_students_json,
         all_students_json=all_students_json,
         ranking_order=RANKING_ORDER,
+        academic_year=ay,
+        terms=terms,
+        selected_term=selected_term,
     )

@@ -6,6 +6,26 @@
 
 {% block header_actions %}
   <form method="GET" action="{{ url_for('at_risk.index') }}" class="flex items-center gap-2">
+
+    <!-- Term selector (only when an academic year is configured) -->
+    {% if terms %}
+      <select
+        name="term_id"
+        onchange="this.form.submit()"
+        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      >
+        {% for t in terms %}
+          <option value="{{ t.id }}" {% if selected_term and t.id == selected_term.id %}selected{% endif %}>
+            {{ academic_year.label }} · {{ t.name }}
+          </option>
+        {% endfor %}
+      </select>
+      <!-- preserve other filters across term change -->
+      {% if selected_grade %}<input type="hidden" name="grade" value="{{ selected_grade }}">{% endif %}
+      {% if selected_subject %}<input type="hidden" name="subject" value="{{ selected_subject }}">{% endif %}
+    {% endif %}
+
     <select
       name="grade"
       onchange="this.form.submit()"
@@ -31,7 +51,7 @@
     </select>
 
     {% if selected_grade or selected_subject %}
-      <a href="{{ url_for('at_risk.index') }}"
+      <a href="{{ url_for('at_risk.index', term_id=selected_term.id if selected_term else '') }}"
          class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 shadow-sm
                 hover:text-slate-700 hover:border-slate-300 transition-colors whitespace-nowrap">
         Clear

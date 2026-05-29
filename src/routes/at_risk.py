@@ -1,7 +1,7 @@
 from collections import defaultdict
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models import db, Student, Subject, WeeklyEntry, RANKING_ORDER
+from models import db, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKING_ORDER
 
 at_risk_bp = Blueprint("at_risk", __name__, url_prefix="/at-risk")
 
@@ -50,12 +50,41 @@ def _detect(entries: list) -> tuple[bool, str]:
     return False, ""
 
 
+def _active_term_filter():
+    """
+    Return the active AcademicYear, its terms, and the currently selected Term
+    based on the `term_id` query param (defaults to the term containing today).
+    Returns (academic_year | None, terms, selected_term | None).
+    """
+    ay = AcademicYear.query.filter_by(is_active=True).first()
+    if not ay:
+        return None, [], None
+
+    terms = ay.terms  # ordered by id (Term 1 → 2 → 3)
+
+    # Honour explicit ?term_id= param
+    term_id = request.args.get("term_id", type=int)
+    if term_id:
+        selected = next((t for t in terms if t.id == term_id), None)
+    else:
+        import datetime
+        today_iso = datetime.date.today().isocalendar()
+        selected = next(
+            (t for t in terms if t.contains_week(today_iso.week, today_iso.year)),
+            terms[-1] if terms else None,  # fallback to last term
+        )
+
+    return ay, terms, selected
+
+
 @at_risk_bp.route("/")
 @login_required
 def index():
     grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
     selected_grade   = request.args.get("grade", "")
     selected_subject = request.args.get("subject", "")
+
+    ay, terms, selected_term = _active_term_filter()
 
     # Subject names — deduplicated so cross-grade subjects (e.g. Mathematics)
     # only appear once in the dropdown when no grade is selected.
@@ -88,6 +117,13 @@ def index():
         q = q.join(Subject).filter(Subject.name == selected_subject)
 
     all_entries = q.all()
+
+    # Filter to selected term window (if a term is active)
+    if selected_term:
+        all_entries = [
+            e for e in all_entries
+            if selected_term.contains_week(e.iso_week, e.iso_year)
+        ]
 
     grouped = defaultdict(list)
     for entry in all_entries:
@@ -132,4 +168,7 @@ def index():
         subject_names=subject_names,
         selected_grade=selected_grade,
         selected_subject=selected_subject,
+        academic_year=ay,
+        terms=terms,
+        selected_term=selected_term,
     )

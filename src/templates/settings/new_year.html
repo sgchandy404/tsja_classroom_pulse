@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}New Academic Year — Classroom Pulse{% endblock %}
+{% block page_title %}New Academic Year{% endblock %}
+
+{% block content %}
+<div class="max-w-md">
+  <div class="rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+    <p class="text-sm text-slate-500 mb-6">
+      Enter the year in which the academic year <strong>starts</strong> (April).
+      Default term boundaries for India / Cambridge will be pre-filled — you can adjust them on the next screen.
+    </p>
+
+    <form method="POST" action="{{ url_for('settings.new_year') }}">
+      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">
+        Starting Year (April)
+      </label>
+      <input
+        type="number"
+        name="start_year"
+        value="{{ suggested }}"
+        min="2020"
+        max="2099"
+        required
+        class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+               focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+      />
+      <p class="mt-1.5 text-xs text-slate-400">
+        e.g. enter <strong>2026</strong> for the 2026–27 academic year (April 2026 – March 2027)
+      </p>
+
+      <div class="mt-6 flex items-center gap-3">
+        <button type="submit"
+                class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
+                       hover:bg-indigo-500 transition-colors">
+          Create &amp; Configure Terms
+        </button>
+        <a href="{{ url_for('settings.index') }}"
+           class="text-sm text-slate-500 hover:text-slate-700">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

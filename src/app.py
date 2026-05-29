@@ -1,8 +1,9 @@
 import os
 import random
+import datetime
 from flask import Flask, redirect, url_for, render_template
 from flask_login import LoginManager
-from models import db, User, Student, Subject, WeeklyEntry, RANKINGS
+from models import db, User, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKINGS
 
 login_manager = LoginManager()
 
@@ -24,15 +25,18 @@ def create_app() -> Flask:
     from routes.entry import entry_bp
     from routes.at_risk import at_risk_bp
     from routes.students import students_bp
+    from routes.settings import settings_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(entry_bp)
     app.register_blueprint(at_risk_bp)
     app.register_blueprint(students_bp)
+    app.register_blueprint(settings_bp)
 
     with app.app_context():
         db.create_all()
         _seed_admin()
+        _seed_default_academic_year()
         if os.getenv("SEED_DEMO_DATA") == "1" and Subject.query.count() == 0:
             _seed_demo()
 
@@ -59,6 +63,49 @@ def _seed_admin() -> None:
         db.session.add(admin)
         db.session.commit()
         print("[init] Default admin created — username: admin  password: changeme123")
+
+
+def _build_default_terms(start_year: int) -> list[dict]:
+    """Return Term kwargs for an Indian Cambridge-affiliated school calendar."""
+    end_year = start_year + 1
+
+    def _w(year, month, day):
+        iso = datetime.date(year, month, day).isocalendar()
+        return iso.week, iso.year
+
+    t1s, t1sy = _w(start_year, 4,  1)
+    t1e, t1ey = _w(start_year, 9, 30)
+    t2s, t2sy = _w(start_year, 10, 1)
+    t2e, t2ey = _w(start_year, 12, 31)
+    t3s, t3sy = _w(end_year,   1,  1)
+    t3e, t3ey = _w(end_year,   3, 31)
+
+    return [
+        dict(name="Term 1", start_iso_week=t1s, start_iso_year=t1sy, end_iso_week=t1e, end_iso_year=t1ey),
+        dict(name="Term 2", start_iso_week=t2s, start_iso_year=t2sy, end_iso_week=t2e, end_iso_year=t2ey),
+        dict(name="Term 3", start_iso_week=t3s, start_iso_year=t3sy, end_iso_week=t3e, end_iso_year=t3ey),
+    ]
+
+
+def _seed_default_academic_year() -> None:
+    """Create and activate the current academic year if none exist."""
+    if AcademicYear.query.count() > 0:
+        return
+
+    today = datetime.date.today()
+    # Academic year starts in April; if we're before April it's the previous year's start
+    start_year = today.year if today.month >= 4 else today.year - 1
+    label = f"{start_year}–{str(start_year + 1)[-2:]}"
+
+    ay = AcademicYear(label=label, start_year=start_year, is_active=True)
+    db.session.add(ay)
+    db.session.flush()
+
+    for td in _build_default_terms(start_year):
+        db.session.add(Term(academic_year_id=ay.id, **td))
+
+    db.session.commit()
+    print(f"[init] Academic year {label} created and set as active.")
 
 
 def _seed_demo() -> None:

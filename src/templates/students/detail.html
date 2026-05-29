@@ -19,6 +19,28 @@
 {% endblock %}
 
 {% block header_actions %}
+<div class="flex items-center gap-2">
+
+  <!-- Term selector -->
+  {% if terms %}
+  <form method="GET" action="{{ url_for('students.detail', student_id=student.id) }}">
+    <select
+      name="term_id"
+      onchange="this.form.submit()"
+      class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
+             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+    >
+      {% for t in terms %}
+        <option value="{{ t.id }}" {% if selected_term and t.id == selected_term.id %}selected{% endif %}>
+          {{ academic_year.label }} · {{ t.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+
+</div>
+
 <div
   x-data="studentNav()"
   x-init="init()"
