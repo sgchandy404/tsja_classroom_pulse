@@ -1,6 +1,6 @@
 import datetime
 from collections import defaultdict
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, RANKINGS
 
@@ -21,9 +21,40 @@ def _week_label(week, year):
         return f"Week {week}, {year}"
 
 
+def _adjacent_week(week, year, delta):
+    """Return (week, year) shifted by delta weeks (+1 or -1)."""
+    monday = datetime.date.fromisocalendar(year, week, 1)
+    target = monday + datetime.timedelta(weeks=delta)
+    iso = target.isocalendar()
+    return iso.week, iso.year
+
+
+MONTHS = [
+    (1, "January"), (2, "February"), (3, "March"), (4, "April"),
+    (5, "May"), (6, "June"), (7, "July"), (8, "August"),
+    (9, "September"), (10, "October"), (11, "November"), (12, "December"),
+]
+
+
 @dashboard_bp.route("/")
 @login_required
 def index():
+    # Month+year jump: redirect to the ISO week of the 1st of that month
+    if request.args.get("month") and request.args.get("jump_year"):
+        try:
+            month     = int(request.args["month"])
+            jump_year = int(request.args["jump_year"])
+            first_day = datetime.date(jump_year, month, 1)
+            iso       = first_day.isocalendar()
+            return redirect(url_for(
+                "dashboard.index",
+                grade=request.args.get("grade", ""),
+                week=iso.week,
+                year=iso.year,
+            ))
+        except (ValueError, TypeError):
+            pass
+
     # Available grades and weeks for filters
     grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
 
@@ -92,15 +123,31 @@ def index():
             "counts": {r: counts[r] for r in RANKINGS},
         })
 
+    prev_week, prev_year = _adjacent_week(selected_week, selected_year, -1)
+    next_week, next_year = _adjacent_week(selected_week, selected_year, +1)
+
+    # Derive current month from the Monday of the selected week
+    try:
+        selected_month = datetime.date.fromisocalendar(selected_year, selected_week, 1).month
+    except ValueError:
+        selected_month = datetime.date.today().month
+
+    today = datetime.date.today()
+    year_range = list(range(2023, today.year + 2))
+
     return render_template(
         "dashboard/index.html",
         grades=grades,
         selected_grade=selected_grade,
         selected_week=selected_week,
         selected_year=selected_year,
-        available_weeks=available_weeks,
+        selected_month=selected_month,
         week_label=_week_label(selected_week, selected_year),
+        prev_week=prev_week, prev_year=prev_year,
+        next_week=next_week, next_year=next_year,
         breakdown=breakdown,
         grade_summaries=grade_summaries,
         rankings=RANKINGS,
+        months=MONTHS,
+        year_range=year_range,
     )
