@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Deactivate Subject — Classroom Pulse{% endblock %}
+{% block page_title %}Deactivate Subject{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.subjects', grade=subject.grade) }}" class="text-sm text-slate-500 hover:text-slate-700">← Subjects</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="rounded-xl border border-red-100 bg-white px-8 py-6 shadow-sm">
+    <div class="mb-5 flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600 text-lg">⚠</div>
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">Deactivate "{{ subject.name }}" ({{ subject.grade }})?</h2>
+        <p class="text-xs text-slate-500 mt-0.5">This subject will no longer appear in the entry form or dashboards.</p>
+      </div>
+    </div>
+
+    <div class="mb-6 rounded-lg bg-amber-50 border border-amber-200 px-5 py-4 text-sm text-amber-800">
+      <p>This subject has <strong>{{ entry_count }}</strong> historical ranking entry/entries.</p>
+      <p class="mt-1.5 text-xs">Historical data is always preserved. You can reactivate this subject at any time.</p>
+    </div>
+
+    <div class="flex gap-3">
+      <form method="POST">
+        <button type="submit"
+                class="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 transition-colors">
+          Yes, Deactivate
+        </button>
+      </form>
+      <a href="{{ url_for('admin.subjects', grade=subject.grade) }}"
+         class="rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">
+        Cancel
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

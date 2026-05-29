@@ -21,9 +21,6 @@
           </option>
         {% endfor %}
       </select>
-      <!-- preserve other filters across term change -->
-      {% if selected_grade %}<input type="hidden" name="grade" value="{{ selected_grade }}">{% endif %}
-      {% if selected_subject %}<input type="hidden" name="subject" value="{{ selected_subject }}">{% endif %}
     {% endif %}
 
     <select
@@ -50,13 +47,6 @@
       {% endfor %}
     </select>
 
-    {% if selected_grade or selected_subject %}
-      <a href="{{ url_for('at_risk.index', term_id=selected_term.id if selected_term else '') }}"
-         class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 shadow-sm
-                hover:text-slate-700 hover:border-slate-300 transition-colors whitespace-nowrap">
-        Clear
-      </a>
-    {% endif %}
   </form>
 {% endblock %}
 

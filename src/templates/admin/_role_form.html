@@ -1,0 +1,72 @@
+{#
+  Shared partial: role assignment form fields.
+  Included by new_user.html and edit_user.html.
+  Context vars: grades, subjects_by_grade, current_roles, current_incharge_grades, current_teacher_pairs
+#}
+
+<!-- Global roles -->
+<div class="mb-6">
+  <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Global Roles</h3>
+  <div class="flex items-center gap-6">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" name="role_admin" value="1"
+             {% if current_roles is defined and 'admin' in current_roles %}checked{% endif %}
+             class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+      <span class="text-sm font-medium text-slate-700">Admin</span>
+      <span class="text-xs text-slate-400">— full access</span>
+    </label>
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="checkbox" name="role_coordinator" value="1"
+             {% if current_roles is defined and 'coordinator' in current_roles %}checked{% endif %}
+             class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+      <span class="text-sm font-medium text-slate-700">Coordinator</span>
+      <span class="text-xs text-slate-400">— view all, audit read</span>
+    </label>
+  </div>
+</div>
+
+<!-- Per-grade assignments -->
+<div>
+  <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Grade Assignments</h3>
+  {% if grades %}
+    <div class="space-y-4">
+      {% for grade in grades %}
+      <div class="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm font-semibold text-slate-700">{{ grade }}</p>
+          <!-- In-Charge toggle -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox"
+                   name="incharge_{{ grade }}"
+                   value="1"
+                   {% if current_incharge_grades is defined and grade in current_incharge_grades %}checked{% endif %}
+                   class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400">
+            <span class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              In-Charge
+            </span>
+          </label>
+        </div>
+        <!-- Per-subject teacher checkboxes -->
+        <div class="flex flex-wrap gap-2">
+          {% for subj in subjects_by_grade.get(grade, []) %}
+          <label class="flex items-center gap-1.5 cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-1.5
+                        hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+            <input type="checkbox"
+                   name="teacher_{{ grade }}_{{ subj.id }}"
+                   value="1"
+                   {% if current_teacher_pairs is defined and (grade, subj.id) in current_teacher_pairs %}checked{% endif %}
+                   class="h-3.5 w-3.5 rounded border-slate-300 text-green-600 focus:ring-green-500">
+            <span class="text-xs font-medium text-slate-700">{{ subj.name }}</span>
+          </label>
+          {% endfor %}
+          {% if not subjects_by_grade.get(grade) %}
+            <p class="text-xs text-slate-400 italic">No subjects configured for this grade.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-slate-400">No grades or subjects configured yet.</p>
+  {% endif %}
+</div>

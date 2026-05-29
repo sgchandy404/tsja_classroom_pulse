@@ -1,8 +1,9 @@
 import datetime
 from collections import defaultdict
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, abort
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, RANKINGS
+from permissions import perms as get_perms
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -16,7 +17,7 @@ def _week_label(week, year):
     try:
         monday = datetime.date.fromisocalendar(year, week, 1)
         sunday = monday + datetime.timedelta(days=6)
-        return f"Wk {week} · {monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
+        return f"{monday.strftime('%d/%m/%Y')} – {sunday.strftime('%d/%m/%Y')}"
     except ValueError:
         return f"Week {week}, {year}"
 
@@ -55,8 +56,16 @@ def index():
         except (ValueError, TypeError):
             pass
 
-    # Available grades and weeks for filters
-    grades = [r[0] for r in db.session.query(Student.grade).distinct().order_by(Student.grade).all()]
+    # Available grades — filter by permission
+    p = get_perms()
+    all_grades = [r[0] for r in db.session.query(Student.grade).filter(Student.is_active == True).distinct().order_by(Student.grade).all()]
+    vg = p.visible_grades()
+    grades = all_grades if vg is None else [g for g in all_grades if g in vg]
+
+    # If a specific grade is requested but not visible, 403
+    requested_grade = request.args.get("grade", "")
+    if requested_grade and not p.can_view_grade(requested_grade):
+        abort(403)
 
     week_rows = (
         db.session.query(WeeklyEntry.iso_week, WeeklyEntry.iso_year)
@@ -75,8 +84,12 @@ def index():
     # Pull entries for selected grade + week
     breakdown = []
     if selected_grade:
-        subjects = Subject.query.filter_by(grade=selected_grade).order_by(Subject.name).all()
-        student_count = Student.query.filter_by(grade=selected_grade).count()
+        subj_q = Subject.query.filter_by(grade=selected_grade).filter(Subject.is_active == True)
+        visible_sids = p.visible_subject_ids_for_grade(selected_grade)
+        if visible_sids is not None:
+            subj_q = subj_q.filter(Subject.id.in_(visible_sids))
+        subjects = subj_q.order_by(Subject.name).all()
+        student_count = Student.query.filter_by(grade=selected_grade, is_active=True).count()
 
         for subject in subjects:
             entries = WeeklyEntry.query.filter_by(
@@ -104,15 +117,20 @@ def index():
     # Grade-level summary cards (all grades, current week)
     grade_summaries = []
     for grade in grades:
-        entries = (
+        gq = (
             WeeklyEntry.query
             .join(Student)
             .filter(
                 Student.grade == grade,
+                Student.is_active == True,
                 WeeklyEntry.iso_week == selected_week,
                 WeeklyEntry.iso_year == selected_year,
-            ).all()
+            )
         )
+        gsids = p.visible_subject_ids_for_grade(grade)
+        if gsids is not None:
+            gq = gq.filter(WeeklyEntry.subject_id.in_(gsids))
+        entries = gq.all()
         counts = defaultdict(int)
         for e in entries:
             counts[e.ranking] += 1

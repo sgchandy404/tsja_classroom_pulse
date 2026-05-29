@@ -37,9 +37,9 @@
         {% for t in ay.terms %}
           <span class="text-xs text-slate-500 bg-slate-100 rounded-md px-2 py-0.5">
             {{ t.name }}:
-            {% if t.start_date %}{{ t.start_date.strftime('%d %b') }}{% endif %}
+            {% if t.start_date %}{{ t.start_date.strftime('%d/%m/%Y') }}{% endif %}
             –
-            {% if t.end_date %}{{ t.end_date.strftime('%d %b %Y') }}{% endif %}
+            {% if t.end_date %}{{ t.end_date.strftime('%d/%m/%Y') }}{% endif %}
           </span>
         {% endfor %}
       </div>

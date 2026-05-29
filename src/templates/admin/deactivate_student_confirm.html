@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Deactivate Student — Classroom Pulse{% endblock %}
+{% block page_title %}Deactivate Student{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.students', grade=student.grade) }}" class="text-sm text-slate-500 hover:text-slate-700">← Students</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="rounded-xl border border-red-100 bg-white px-8 py-6 shadow-sm">
+    <div class="mb-5 flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600 text-lg">⚠</div>
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">Deactivate "{{ student.name }}"?</h2>
+        <p class="text-xs text-slate-500 mt-0.5">{{ student.grade }}{% if student.roll_number %} · Roll {{ student.roll_number }}{% endif %}</p>
+      </div>
+    </div>
+
+    <div class="mb-6 rounded-lg bg-amber-50 border border-amber-200 px-5 py-4 text-sm text-amber-800">
+      <p>This student has <strong>{{ entry_count }}</strong> historical ranking entry/entries.</p>
+      <p class="mt-1.5 text-xs">All historical data is preserved. You can reactivate this student at any time.</p>
+    </div>
+
+    <div class="flex gap-3">
+      <form method="POST">
+        <button type="submit"
+                class="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 transition-colors">
+          Yes, Deactivate
+        </button>
+      </form>
+      <a href="{{ url_for('admin.edit_student', student_id=student.id) }}"
+         class="rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">
+        Cancel
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

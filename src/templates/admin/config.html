@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}App Config — Classroom Pulse{% endblock %}
+{% block page_title %}App Config{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.index') }}" class="text-sm text-slate-500 hover:text-slate-700">← Users</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-md">
+  <div class="rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+    <form method="POST" action="{{ url_for('admin.config') }}">
+
+      <div class="mb-6">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">
+          Grace Period (hours)
+        </label>
+        <input
+          type="number"
+          name="grace_period_hours"
+          value="{{ grace_period_hours }}"
+          min="0"
+          required
+          class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+        />
+        <p class="mt-1.5 text-xs text-slate-400">
+          How long a Teacher or In-Charge can edit their own entries after submission.
+          Set to <strong>0</strong> to lock immediately. Admins are never locked.
+        </p>
+      </div>
+
+      <button type="submit"
+              class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
+                     hover:bg-indigo-500 transition-colors">
+        Save Settings
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

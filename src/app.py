@@ -2,8 +2,8 @@ import os
 import random
 import datetime
 from flask import Flask, redirect, url_for, render_template
-from flask_login import LoginManager
-from models import db, User, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKINGS
+from flask_login import LoginManager, current_user
+from models import db, User, UserRole, Student, Subject, Grade, WeeklyEntry, AcademicYear, Term, AppConfig, RANKINGS
 
 login_manager = LoginManager()
 
@@ -26,23 +26,40 @@ def create_app() -> Flask:
     from routes.at_risk import at_risk_bp
     from routes.students import students_bp
     from routes.settings import settings_bp
+    from routes.admin import admin_bp
+    from routes.audit import audit_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(entry_bp)
     app.register_blueprint(at_risk_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(audit_bp)
+
+    # Inject Permissions object into every template
+    from permissions import Permissions
+    @app.context_processor
+    def inject_perms():
+        return {"perms": Permissions(current_user)}
 
     with app.app_context():
         db.create_all()
+        _migrate_schema()
         _seed_admin()
         _seed_default_academic_year()
+        _seed_default_config()
+        _seed_grades()
         if os.getenv("SEED_DEMO_DATA") == "1" and Subject.query.count() == 0:
             _seed_demo()
 
     @app.route("/")
     def index():
         return redirect(url_for("dashboard.index"))
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        return render_template("errors/403.html"), 403
 
     @app.errorhandler(404)
     def not_found(e):
@@ -56,13 +73,58 @@ def load_user(user_id: str):
     return db.session.get(User, int(user_id))
 
 
+def _migrate_schema() -> None:
+    """Add new columns/tables to existing DBs without losing data (SQLite-safe)."""
+    with db.engine.connect() as conn:
+        for stmt in [
+            "ALTER TABLE students ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
+            "ALTER TABLE subjects ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
+        ]:
+            try:
+                conn.execute(db.text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+
+def _seed_grades() -> None:
+    """Auto-migrate existing grade strings into the Grade registry if it is empty."""
+    if Grade.query.count() > 0:
+        return
+    existing = set(
+        [r[0] for r in db.session.query(Student.grade).distinct().all()] +
+        [r[0] for r in db.session.query(Subject.grade).distinct().all()]
+    )
+    for name in sorted(existing):
+        if name:
+            db.session.add(Grade(name=name, is_active=True))
+    if existing:
+        db.session.commit()
+        print(f"[init] Seeded {len(existing)} grade(s) into Grade registry.")
+
+
 def _seed_admin() -> None:
     if User.query.count() == 0:
         admin = User(username="admin")
         admin.set_password("changeme123")
         db.session.add(admin)
+        db.session.flush()
+        db.session.add(UserRole(user_id=admin.id, role="admin"))
         db.session.commit()
         print("[init] Default admin created — username: admin  password: changeme123")
+    else:
+        # Ensure the admin user has an admin role (migration for existing DBs)
+        admin = User.query.filter_by(username="admin").first()
+        if admin and not any(r.role == "admin" for r in admin.roles):
+            db.session.add(UserRole(user_id=admin.id, role="admin"))
+            db.session.commit()
+
+
+def _seed_default_config() -> None:
+    """Seed default AppConfig values if not already present."""
+    if not db.session.get(AppConfig, "grace_period_hours"):
+        db.session.add(AppConfig(key="grace_period_hours", value="48"))
+        db.session.commit()
 
 
 def _build_default_terms(start_year: int) -> list[dict]:
@@ -153,6 +215,12 @@ def _seed_demo() -> None:
     BASE_YEAR = 2026
     WEEKS = list(range(17, 23))  # weeks 17-22
 
+    # Seed Grade registry
+    for grade_name in GRADES:
+        if not Grade.query.filter_by(name=grade_name).first():
+            db.session.add(Grade(name=grade_name, is_active=True))
+    db.session.flush()
+
     # Insert subjects and students
     subject_objs = {}
     student_objs = {}
@@ -205,6 +273,29 @@ def _seed_demo() -> None:
                     ))
 
     db.session.commit()
+
+    # Demo users for RBAC testing (skip if already exist)
+    if not User.query.filter_by(username="teacher_5a").first():
+        maths_5a = subject_objs[("Grade 5A", "Mathematics")]
+        science_5a = subject_objs[("Grade 5A", "Science")]
+
+        t = User(username="teacher_5a"); t.set_password("test123")
+        db.session.add(t); db.session.flush()
+        db.session.add(UserRole(user_id=t.id, role="teacher", grade="Grade 5A", subject_id=maths_5a.id))
+        db.session.add(UserRole(user_id=t.id, role="teacher", grade="Grade 5A", subject_id=science_5a.id))
+
+        ic = User(username="incharge_5a"); ic.set_password("test123")
+        db.session.add(ic); db.session.flush()
+        db.session.add(UserRole(user_id=ic.id, role="incharge", grade="Grade 5A"))
+        db.session.add(UserRole(user_id=ic.id, role="teacher", grade="Grade 5A", subject_id=maths_5a.id))
+
+        co = User(username="coordinator"); co.set_password("test123")
+        db.session.add(co); db.session.flush()
+        db.session.add(UserRole(user_id=co.id, role="coordinator"))
+
+        db.session.commit()
+        print("[seed] Demo users: teacher_5a, incharge_5a, coordinator (password: test123)")
+
     print("[seed] Demo data loaded — 3 grades, 20 students, 6 weeks of entries.")
     print("[seed] At-risk scenarios: Aarav (stuck), Priya (declining), Sanjay (stuck), Dev (declining).")
 

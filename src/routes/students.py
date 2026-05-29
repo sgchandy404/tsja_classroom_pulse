@@ -1,9 +1,10 @@
 import json
 from collections import defaultdict
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, abort
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, AcademicYear, Term, RANKING_ORDER
 from routes.at_risk import _detect, _active_term_filter
+from permissions import perms as get_perms
 
 students_bp = Blueprint("students", __name__, url_prefix="/students")
 
@@ -13,7 +14,18 @@ students_bp = Blueprint("students", __name__, url_prefix="/students")
 def detail(student_id):
     student = Student.query.get_or_404(student_id)
 
+    p = get_perms()
+    if not p.can_view_grade(student.grade):
+        abort(403)
+
     ay, terms, selected_term = _active_term_filter()
+
+    # Subjects this user may view for this student's grade
+    visible_sids = p.visible_subject_ids_for_grade(student.grade)
+    subj_q = Subject.query.filter_by(grade=student.grade).filter(Subject.is_active == True)
+    if visible_sids is not None:
+        subj_q = subj_q.filter(Subject.id.in_(visible_sids))
+    subjects = subj_q.order_by(Subject.name).all()
 
     # All entries for this student, oldest first, optionally filtered to selected term
     q = (
@@ -26,6 +38,10 @@ def detail(student_id):
     if selected_term:
         entries = [e for e in entries if selected_term.contains_week(e.iso_week, e.iso_year)]
 
+    # Restrict entries to subjects this user is allowed to view
+    if visible_sids is not None:
+        entries = [e for e in entries if e.subject_id in visible_sids]
+
     # Ordered unique weeks
     weeks_seen = []
     weeks_set = set()
@@ -34,13 +50,6 @@ def detail(student_id):
         if key not in weeks_set:
             weeks_seen.append(key)
             weeks_set.add(key)
-
-    subjects = (
-        Subject.query
-        .filter_by(grade=student.grade)
-        .order_by(Subject.name)
-        .all()
-    )
 
     lookup = {(e.subject_id, e.iso_year, e.iso_week): e.ranking for e in entries}
 
@@ -74,7 +83,7 @@ def detail(student_id):
     # Students in same grade for dropdown + search
     grade_mates = (
         Student.query
-        .filter_by(grade=student.grade)
+        .filter_by(grade=student.grade, is_active=True)
         .order_by(Student.name)
         .all()
     )
@@ -82,6 +91,7 @@ def detail(student_id):
     # All students for search fallback (across grades)
     all_students = (
         Student.query
+        .filter(Student.is_active == True)
         .order_by(Student.grade, Student.name)
         .all()
     )

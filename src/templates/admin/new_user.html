@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}New User — Classroom Pulse{% endblock %}
+{% block page_title %}New User{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.index') }}" class="text-sm text-slate-500 hover:text-slate-700">← All users</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('admin.new_user') }}">
+
+  <!-- Credentials -->
+  <div class="mb-6 rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-4">Credentials</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Username</label>
+        <input type="text" name="username" required autocomplete="off"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Password</label>
+        <input type="password" name="password" required minlength="6" autocomplete="new-password"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Role assignments -->
+  <div class="mb-6 rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+    {% set current_roles = [] %}
+    {% set current_incharge_grades = [] %}
+    {% set current_teacher_pairs = [] %}
+    {% include "admin/_role_form.html" %}
+  </div>
+
+  <div class="flex items-center gap-3">
+    <button type="submit"
+            class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
+                   hover:bg-indigo-500 transition-colors">
+      Create User
+    </button>
+    <a href="{{ url_for('admin.index') }}" class="text-sm text-slate-500 hover:text-slate-700">Cancel</a>
+  </div>
+</form>
+{% endblock %}

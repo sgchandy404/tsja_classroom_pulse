@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Student — Classroom Pulse{% endblock %}
+{% block page_title %}Edit Student{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.students', grade=student.grade) }}" class="text-sm text-slate-500 hover:text-slate-700">← Students</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-md space-y-4">
+
+  <div class="rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+    <form method="POST" action="{{ url_for('admin.edit_student', student_id=student.id) }}" class="space-y-5">
+      <input type="hidden" name="action" value="save">
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Full Name</label>
+        <input type="text" name="name" required value="{{ student.name }}"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Roll Number <span class="normal-case font-normal text-slate-400">(optional)</span></label>
+        <input type="text" name="roll_number" value="{{ student.roll_number or '' }}"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Grade</label>
+        <div class="w-full rounded-lg border border-slate-100 bg-slate-50 px-3.5 py-2 text-sm text-slate-500">
+          {{ student.grade }}
+        </div>
+        <p class="mt-1 text-xs text-slate-400">Grade cannot be changed. Deactivate and re-add to move a student.</p>
+      </div>
+
+      <button type="submit"
+              class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+        Save Changes
+      </button>
+    </form>
+  </div>
+
+  {# Deactivate / Reactivate section #}
+  <div class="rounded-xl border border-slate-200 bg-white px-8 py-5 shadow-sm">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Account Status</h3>
+    {% if student.is_active %}
+      <p class="text-sm text-slate-600 mb-3">This student is currently <span class="font-medium text-green-600">active</span>.</p>
+      <a href="{{ url_for('admin.deactivate_student', student_id=student.id) }}"
+         class="inline-block rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+        Deactivate Student
+      </a>
+    {% else %}
+      <p class="text-sm text-slate-600 mb-3">This student is <span class="font-medium text-slate-400">inactive</span>.</p>
+      <form method="POST" action="{{ url_for('admin.reactivate_student', student_id=student.id) }}" class="inline">
+        <button type="submit"
+                class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors">
+          Reactivate Student
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}New Subject — Classroom Pulse{% endblock %}
+{% block page_title %}Add Subject{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.subjects') }}" class="text-sm text-slate-500 hover:text-slate-700">← Subjects</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-md">
+  <div class="rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+    <form method="POST" action="{{ url_for('admin.new_subject') }}" class="space-y-5">
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Subject Name</label>
+        <input type="text" name="name" required autofocus placeholder="e.g. Economics"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Grade</label>
+        <select name="grade" required
+                class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                       focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+          <option value="">— Select grade —</option>
+          {% for g in all_grades %}
+            <option value="{{ g }}" {% if g == preselect_grade %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit"
+              class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+        Add Subject
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

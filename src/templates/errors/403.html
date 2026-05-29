@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access Denied — Classroom Pulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['"DM Sans"', 'ui-sans-serif'] } } } }</script>
+</head>
+<body class="min-h-screen bg-slate-950 font-sans flex items-center justify-center p-8">
+  <div class="text-center">
+    <p class="text-6xl font-bold text-red-500 mb-4">403</p>
+    <h1 class="text-xl font-semibold text-white mb-2">Access Denied</h1>
+    <p class="text-slate-400 mb-8">You don't have permission to view this page.</p>
+    <a href="javascript:history.back()"
+       class="inline-block rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-300
+              hover:bg-slate-700 hover:text-white transition-colors mr-3">
+      ← Go back
+    </a>
+    <a href="/dashboard"
+       class="inline-block rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white
+              hover:bg-indigo-500 transition-colors">
+      Dashboard
+    </a>
+  </div>
+</body>
+</html>

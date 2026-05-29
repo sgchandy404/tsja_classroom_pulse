@@ -1,10 +1,12 @@
 """
 Settings blueprint — manage academic years and terms.
+Admin-only.
 """
 import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models import db, AcademicYear, Term
+from permissions import require_role, log_audit
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -65,6 +67,7 @@ def _date_str_to_iso(date_str: str):
 
 @settings_bp.route("/")
 @login_required
+@require_role("admin")
 def index():
     years = AcademicYear.query.order_by(AcademicYear.start_year.desc()).all()
     return render_template("settings/index.html", years=years)
@@ -72,6 +75,7 @@ def index():
 
 @settings_bp.route("/years/new", methods=["GET", "POST"])
 @login_required
+@require_role("admin")
 def new_year():
     if request.method == "POST":
         start_year = int(request.form["start_year"])
@@ -88,6 +92,8 @@ def new_year():
         for td in _default_terms(start_year):
             db.session.add(Term(academic_year_id=ay.id, **td))
 
+        log_audit(user=current_user, action="create", model_name="AcademicYear",
+                  record_id=ay.id, field_name="label", new_value=label)
         db.session.commit()
         flash(f"Academic year {label} created with default term boundaries.", "success")
         return redirect(url_for("settings.edit_year", year_id=ay.id))
@@ -100,6 +106,7 @@ def new_year():
 
 @settings_bp.route("/years/<int:year_id>", methods=["GET", "POST"])
 @login_required
+@require_role("admin")
 def edit_year(year_id):
     ay = AcademicYear.query.get_or_404(year_id)
 
@@ -109,6 +116,9 @@ def edit_year(year_id):
         if action == "set_active":
             AcademicYear.query.update({"is_active": False})
             ay.is_active = True
+            log_audit(user=current_user, action="edit", model_name="AcademicYear",
+                      record_id=ay.id, field_name="is_active", new_value=ay.label,
+                      note="Set as active year")
             db.session.commit()
             flash(f"{ay.label} is now the active academic year.", "success")
             return redirect(url_for("settings.index"))
@@ -135,13 +145,31 @@ def edit_year(year_id):
                 for e in errors:
                     flash(e, "error")
             else:
+                log_audit(user=current_user, action="edit", model_name="AcademicYear",
+                          record_id=ay.id, field_name="terms", new_value="boundaries updated")
                 db.session.commit()
                 flash("Term boundaries saved.", "success")
 
             return redirect(url_for("settings.edit_year", year_id=year_id))
 
+        if action == "toggle_lock":
+            term_id = request.form.get("term_id", type=int)
+            term = db.session.get(Term, term_id)
+            if term and term.academic_year_id == ay.id:
+                term.is_locked = not term.is_locked
+                state = "locked" if term.is_locked else "unlocked"
+                log_audit(user=current_user, action="edit", model_name="Term",
+                          record_id=term.id, field_name="is_locked",
+                          new_value=state, note=f"{ay.label} {term.name}")
+                db.session.commit()
+                flash(f"{term.name} {state}.", "success")
+            return redirect(url_for("settings.edit_year", year_id=year_id))
+
         if action == "delete_year":
             label = ay.label
+            log_audit(user=current_user, action="delete", model_name="AcademicYear",
+                      record_id=ay.id, old_value=label,
+                      note="Academic year deleted")
             db.session.delete(ay)
             db.session.commit()
             flash(f"Academic year {label} deleted.", "success")
