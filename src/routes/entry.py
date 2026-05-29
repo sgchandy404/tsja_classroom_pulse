@@ -16,9 +16,9 @@ def _week_label(week, year):
     try:
         monday = datetime.date.fromisocalendar(year, week, 1)
         sunday = monday + datetime.timedelta(days=6)
-        return f"Wk {week} · {monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
+        return f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
     except ValueError:
-        return f"Week {week}, {year}"
+        return f"{year}, week {week}"
 
 
 def _week_options(centre_week, centre_year, past=8, future=2):
