@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% from "macros.html" import ranking_badge %}
+
+{% block title %}At-Risk Students — Classroom Pulse{% endblock %}
+{% block page_title %}At-Risk Students{% endblock %}
+
+{% block header_actions %}
+  <form method="GET" action="{{ url_for('at_risk.index') }}" class="flex items-center gap-2">
+    <select
+      name="grade"
+      onchange="this.form.submit()"
+      class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
+             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+    >
+      <option value="">All grades</option>
+      {% for g in grades %}
+        <option value="{{ g }}" {% if g == selected_grade %}selected{% endif %}>{{ g }}</option>
+      {% endfor %}
+    </select>
+  </form>
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary strip -->
+<div class="flex items-center gap-6 mb-6">
+  <div class="flex items-center gap-2">
+    <span class="inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+    <span class="text-sm text-slate-600">
+      <span class="font-semibold text-slate-800">{{ flagged | selectattr('reason', 'equalto', 'declining') | list | length }}</span>
+      declining
+    </span>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+    <span class="text-sm text-slate-600">
+      <span class="font-semibold text-slate-800">{{ flagged | selectattr('reason', 'equalto', 'stuck') | list | length }}</span>
+      stuck at Working Towards
+    </span>
+  </div>
+  {% if not flagged %}
+    <span class="text-sm text-slate-400">No at-risk students found{% if selected_grade %} in {{ selected_grade }}{% endif %}.</span>
+  {% endif %}
+</div>
+
+{% if flagged %}
+<div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+  <table class="min-w-full text-sm">
+    <thead>
+      <tr class="bg-slate-50 border-b border-slate-100">
+        <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Student</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flag</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Last 3 Weeks</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Current Ranking</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for item in flagged %}
+      <tr class="hover:bg-slate-50 transition-colors">
+
+        <!-- Student name + roll -->
+        <td class="px-6 py-4">
+          <a href="{{ url_for('students.detail', student_id=item.student.id) }}"
+             class="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            {{ item.student.name }}
+          </a>
+          <p class="text-xs text-slate-400 mt-0.5">{{ item.student.roll_number }}</p>
+        </td>
+
+        <!-- Grade -->
+        <td class="px-4 py-4 text-slate-600 whitespace-nowrap">{{ item.student.grade }}</td>
+
+        <!-- Subject -->
+        <td class="px-4 py-4 text-slate-600 whitespace-nowrap">{{ item.subject.name }}</td>
+
+        <!-- Flag badge -->
+        <td class="px-4 py-4">
+          {% if item.reason == 'declining' %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" />
+              </svg>
+              Declining
+            </span>
+          {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              Stuck
+            </span>
+          {% endif %}
+        </td>
+
+        <!-- Last 3 weeks mini timeline -->
+        <td class="px-4 py-4">
+          <div class="flex items-center gap-1.5">
+            {% for w in item.weeks_data %}
+              <div class="flex flex-col items-center gap-1">
+                <span class="text-[10px] text-slate-400 leading-none">Wk {{ w.week }}</span>
+                <span class="inline-block h-2 w-2 rounded-full
+                  {% if w.ranking == 'Working Towards' %}bg-red-400
+                  {% elif w.ranking == 'Meets Expectations' %}bg-amber-400
+                  {% else %}bg-green-400{% endif %}">
+                </span>
+              </div>
+              {% if not loop.last %}
+                <svg class="h-3 w-3 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </td>
+
+        <!-- Current ranking badge -->
+        <td class="px-4 py-4">
+          {{ ranking_badge(item.last_ranking) }}
+        </td>
+
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+  <div class="flex flex-col items-center justify-center h-56 rounded-xl border-2 border-dashed border-slate-200">
+    <svg class="h-8 w-8 text-green-400 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+    <p class="text-sm font-medium text-slate-600">No at-risk students detected.</p>
+    <p class="text-xs text-slate-400 mt-1">Students need at least 3 weeks of data to be evaluated.</p>
+  </div>
+{% endif %}
+
+{% endblock %}
