@@ -1,0 +1,19 @@
+{% macro ranking_badge(ranking) %}
+  {% if ranking == "Working Towards" %}
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 ring-1 ring-inset ring-red-200">
+      Working Towards
+    </span>
+  {% elif ranking == "Meets Expectations" %}
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200">
+      Meets Expectations
+    </span>
+  {% elif ranking == "Exceeds Expectations" %}
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 ring-1 ring-inset ring-green-200">
+      Exceeds Expectations
+    </span>
+  {% else %}
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+      —
+    </span>
+  {% endif %}
+{% endmacro %}
