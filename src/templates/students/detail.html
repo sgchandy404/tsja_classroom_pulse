@@ -4,35 +4,103 @@
 {% block title %}{{ student.name }} — Classroom Pulse{% endblock %}
 {% block page_title %}{{ student.name }}{% endblock %}
 
+{% block head %}
+<style>
+  @keyframes row-flash {
+    0%   { background-color: #fef3c7; }
+    25%  { background-color: #fde68a; }
+    50%  { background-color: #fef3c7; }
+    75%  { background-color: #fde68a; }
+    100% { background-color: transparent; }
+  }
+  .row-highlight {
+    animation: row-flash 1.4s ease-in-out;
+    outline: 2px solid #f59e0b;
+    outline-offset: -2px;
+    border-radius: 4px;
+  }
+</style>
+{% endblock %}
+
 {% block header_actions %}
-  <div class="flex items-center gap-2">
-    {% if prev_student %}
-      <a href="{{ url_for('students.detail', student_id=prev_student.id) }}"
-         class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600
-                hover:border-indigo-300 hover:text-indigo-600 transition-colors shadow-sm">
-        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-        </svg>
-        {{ prev_student.name }}
-      </a>
-    {% endif %}
-    {% if next_student %}
-      <a href="{{ url_for('students.detail', student_id=next_student.id) }}"
-         class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600
-                hover:border-indigo-300 hover:text-indigo-600 transition-colors shadow-sm">
-        {{ next_student.name }}
-        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-        </svg>
-      </a>
-    {% endif %}
+<div
+  x-data="studentNav()"
+  x-init="init()"
+  class="flex items-center gap-2"
+>
+  <!-- Grade dropdown -->
+  <select
+    x-model="selectedId"
+    @change="navigate()"
+    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
+           focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+  >
+    {% for s in grade_mates %}
+      <option value="{{ s.id }}" {% if s.id == student.id %}selected{% endif %}>
+        {{ s.name }} ({{ s.roll_number }})
+      </option>
+    {% endfor %}
+  </select>
+
+  <!-- Search -->
+  <div class="relative">
+    <input
+      x-model="query"
+      @input="search()"
+      @keydown.escape="results = []"
+      @keydown.arrow-down.prevent="focusResult(0)"
+      type="text"
+      placeholder="Search student…"
+      class="w-44 rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-700 shadow-sm
+             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+    />
+    <!-- Search icon -->
+    <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+         fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+    </svg>
+
+    <!-- Results dropdown -->
+    <div
+      x-show="results.length > 0"
+      x-cloak
+      class="absolute right-0 top-full mt-1 z-50 w-64 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden"
+    >
+      <!-- Scope label -->
+      <p class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100"
+         x-text="scopeLabel"></p>
+      <ul class="max-h-52 overflow-y-auto divide-y divide-slate-50">
+        <template x-for="(r, i) in results" :key="r.id">
+          <li>
+            <a
+              :href="'/students/' + r.id"
+              :id="'result-' + i"
+              @keydown.arrow-down.prevent="focusResult(i + 1)"
+              @keydown.arrow-up.prevent="focusResult(i - 1)"
+              class="flex items-center gap-3 px-3 py-2.5 hover:bg-indigo-50 transition-colors"
+            >
+              <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600"
+                   x-text="r.name[0]"></div>
+              <div class="min-w-0">
+                <p class="text-xs font-medium text-slate-800 truncate" x-text="r.name"></p>
+                <p class="text-[10px] text-slate-400" x-text="r.grade + ' · ' + r.roll"></p>
+              </div>
+            </a>
+          </li>
+        </template>
+      </ul>
+    </div>
   </div>
+</div>
 {% endblock %}
 
 {% block content %}
 
 <!-- Student info card -->
-<div class="mb-6 flex items-center gap-5 rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+<div
+  x-data="{ highlightRisk: false }"
+  class="mb-6 flex items-center gap-5 rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm"
+>
   <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-600">
     {{ student.name[0].upper() }}
   </div>
@@ -40,17 +108,34 @@
     <h2 class="text-base font-semibold text-slate-900">{{ student.name }}</h2>
     <p class="text-sm text-slate-400">{{ student.grade }} &middot; Roll No. {{ student.roll_number }}</p>
   </div>
-  <!-- At-risk flags summary -->
+
   {% set risk_count = subject_rows | selectattr('is_risk') | list | length %}
   {% if risk_count > 0 %}
-    <div class="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5">
+    <!-- Clickable at-risk badge -->
+    <button
+      @click="
+        highlightRisk = true;
+        {% for row in subject_rows %}{% if row.is_risk %}
+          const el{{ row.subject.id }} = document.getElementById('subj-row-{{ row.subject.id }}');
+          if (el{{ row.subject.id }}) {
+            el{{ row.subject.id }}.classList.remove('row-highlight');
+            void el{{ row.subject.id }}.offsetWidth;
+            el{{ row.subject.id }}.classList.add('row-highlight');
+            el{{ row.subject.id }}.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        {% endif %}{% endfor %}
+        setTimeout(() => highlightRisk = false, 1600);
+      "
+      class="flex cursor-pointer items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5
+             hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-300"
+    >
       <svg class="h-4 w-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
       </svg>
       <span class="text-sm font-medium text-red-700">
         At-risk in {{ risk_count }} subject{{ 's' if risk_count > 1 }}
       </span>
-    </div>
+    </button>
   {% else %}
     <div class="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-2.5">
       <svg class="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
@@ -76,12 +161,8 @@
     <table class="min-w-full text-sm">
       <thead>
         <tr class="border-b border-slate-100 bg-slate-50">
-          <th class="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
-            Subject
-          </th>
-          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
-            Status
-          </th>
+          <th class="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Subject</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Status</th>
           {% for year, week in weeks %}
             <th class="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
               Wk {{ week }}<br>
@@ -92,9 +173,11 @@
       </thead>
       <tbody class="divide-y divide-slate-100">
         {% for row in subject_rows %}
-        <tr class="hover:bg-slate-50 transition-colors {% if row.is_risk %}bg-red-50/40{% endif %}">
-
-          <!-- Subject name -->
+        <tr
+          id="subj-row-{{ row.subject.id }}"
+          class="transition-colors hover:bg-slate-50 {% if row.is_risk %}bg-red-50/40{% endif %}"
+        >
+          <!-- Subject name + flag -->
           <td class="sticky left-0 bg-white px-6 py-4 font-medium text-slate-800 whitespace-nowrap
                      {% if row.is_risk %}bg-red-50/40{% endif %}">
             <div class="flex items-center gap-2">
@@ -111,14 +194,10 @@
 
           <!-- Latest ranking -->
           <td class="px-4 py-4 whitespace-nowrap">
-            {% if row.latest %}
-              {{ ranking_badge(row.latest) }}
-            {% else %}
-              <span class="text-xs text-slate-300">—</span>
-            {% endif %}
+            {% if row.latest %}{{ ranking_badge(row.latest) }}{% else %}<span class="text-xs text-slate-300">—</span>{% endif %}
           </td>
 
-          <!-- Per-week ranking cells -->
+          <!-- Per-week cells -->
           {% for entry in row.history %}
             <td class="px-4 py-4 text-center">
               {% if entry.ranking %}
@@ -150,4 +229,54 @@
   </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function studentNav() {
+  return {
+    selectedId: '{{ student.id }}',
+    query: '',
+    results: [],
+    scopeLabel: '',
+    gradeStudents: {{ grade_students_json | safe }},
+    allStudents:   {{ all_students_json | safe }},
+
+    init() {},
+
+    navigate() {
+      if (this.selectedId && this.selectedId !== '{{ student.id }}') {
+        window.location.href = '/students/' + this.selectedId;
+      }
+    },
+
+    search() {
+      const q = this.query.trim().toLowerCase();
+      if (!q) { this.results = []; return; }
+
+      const match = list => list.filter(s =>
+        s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q)
+      );
+
+      // Search within same grade first
+      let hits = match(this.gradeStudents).filter(s => s.id !== {{ student.id }});
+      if (hits.length > 0) {
+        this.scopeLabel = '{{ student.grade }}';
+        this.results = hits.slice(0, 8);
+        return;
+      }
+
+      // Fallback: all grades
+      hits = match(this.allStudents).filter(s => s.id !== {{ student.id }});
+      this.scopeLabel = hits.length ? 'All grades' : '';
+      this.results = hits.slice(0, 8);
+    },
+
+    focusResult(i) {
+      const el = document.getElementById('result-' + i);
+      if (el) el.focus();
+    },
+  };
+}
+</script>
 {% endblock %}
