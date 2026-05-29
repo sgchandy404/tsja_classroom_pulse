@@ -1,14 +1,32 @@
-from flask import Blueprint
+from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask_login import login_user, logout_user, login_required, current_user
+from models import db, User
 
 auth_bp = Blueprint("auth", __name__)
 
 
-# Placeholder — full implementation in Phase 2
-@auth_bp.route("/login")
+@auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    return "Login coming in Phase 2", 200
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard.index"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
+            login_user(user, remember=bool(request.form.get("remember")))
+            next_page = request.args.get("next")
+            return redirect(next_page or url_for("dashboard.index"))
+
+        flash("Invalid username or password.", "error")
+
+    return render_template("auth/login.html")
 
 
 @auth_bp.route("/logout")
+@login_required
 def logout():
-    return "Logout coming in Phase 2", 200
+    logout_user()
+    return redirect(url_for("auth.login"))
