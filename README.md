@@ -55,7 +55,7 @@ No Node.js, no build step.
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/tsja_classroom_pulse.git
+git clone https://github.com/sgchandy404/tsja_classroom_pulse.git
 cd tsja_classroom_pulse
 
 pip install -r requirements.txt

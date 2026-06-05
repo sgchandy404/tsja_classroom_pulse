@@ -4,25 +4,10 @@
 {% block page_title %}User Management{% endblock %}
 
 {% block header_actions %}
-  <a href="{{ url_for('admin.grades') }}"
-     class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm
-            hover:border-slate-300 hover:text-slate-800 transition-colors">
-    Grades
-  </a>
-  <a href="{{ url_for('admin.subjects') }}"
-     class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm
-            hover:border-slate-300 hover:text-slate-800 transition-colors">
-    Subjects
-  </a>
-  <a href="{{ url_for('admin.students') }}"
-     class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm
-            hover:border-slate-300 hover:text-slate-800 transition-colors">
-    Students
-  </a>
   <a href="{{ url_for('admin.config') }}"
-     class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm
+     class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm
             hover:border-slate-300 hover:text-slate-800 transition-colors">
-    ⚙ Config
+    ⚙ App Config
   </a>
   <a href="{{ url_for('admin.new_user') }}"
      class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
