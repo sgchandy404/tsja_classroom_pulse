@@ -1,5 +1,25 @@
+# Environment
 .env
-.ini
-.xls
-.xlsx
-.pyc
+
+# Database
+src/instance/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

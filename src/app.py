@@ -1,20 +1,30 @@
 import os
 import random
 import datetime
+import warnings
 from flask import Flask, redirect, url_for, render_template
 from flask_login import LoginManager, current_user
+from dotenv import load_dotenv
 from models import db, User, UserRole, Student, Subject, Grade, WeeklyEntry, AcademicYear, Term, AppConfig, RANKINGS
+
+# Load .env from the project root (one level up from src/)
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 login_manager = LoginManager()
 
 
 def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates")
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+
+    # Database — default to SQLite in src/instance/; override with DATABASE_URL
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL", "sqlite:///database.db"
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # Secret key — required in production
     secret = os.getenv("SECRET_KEY")
     if not secret:
-        import warnings
         warnings.warn(
             "SECRET_KEY env var not set — using an insecure default. "
             "Set SECRET_KEY in production.",
@@ -114,13 +124,14 @@ def _seed_grades() -> None:
 
 def _seed_admin() -> None:
     if User.query.count() == 0:
+        default_pw = os.getenv("ADMIN_PASSWORD", "changeme123")
         admin = User(username="admin")
-        admin.set_password("changeme123")
+        admin.set_password(default_pw)
         db.session.add(admin)
         db.session.flush()
         db.session.add(UserRole(user_id=admin.id, role="admin"))
         db.session.commit()
-        print("[init] Default admin created — username: admin  password: changeme123")
+        print(f"[init] Default admin created — username: admin  password: {default_pw}")
     else:
         # Ensure the admin user has an admin role (migration for existing DBs)
         admin = User.query.filter_by(username="admin").first()
