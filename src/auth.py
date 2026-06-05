@@ -14,7 +14,6 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         user = User.query.filter_by(username=username).first()
-
         if user and user.check_password(password):
             login_user(user, remember=bool(request.form.get("remember")))
             next_page = request.args.get("next")

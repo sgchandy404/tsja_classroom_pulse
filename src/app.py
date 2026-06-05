@@ -12,7 +12,16 @@ def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates")
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
+    secret = os.getenv("SECRET_KEY")
+    if not secret:
+        import warnings
+        warnings.warn(
+            "SECRET_KEY env var not set — using an insecure default. "
+            "Set SECRET_KEY in production.",
+            stacklevel=2,
+        )
+        secret = "dev-secret-change-me"
+    app.config["SECRET_KEY"] = secret
 
     db.init_app(app)
     login_manager.init_app(app)
