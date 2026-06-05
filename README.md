@@ -8,16 +8,15 @@ Built with Flask, SQLite, and Alpine.js — no build step required.
 
 ## Screenshots
 
-> *Screenshots coming soon — run with `SEED_DEMO_DATA=1` to explore the app locally.*
 
-<!-- Dashboard -->
-<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
+Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
 
-<!-- Student Watch (At-Risk) -->
-<!-- ![Student Watch](docs/screenshots/student_watch.png) -->
+Student Watch (At-Risk)
+![Student Watch](docs/screenshots/student_watch.png)
 
-<!-- Student Detail -->
-<!-- ![Student Detail](docs/screenshots/student_detail.png) -->
+Student Detail
+![Student Detail](docs/screenshots/student_detail.png)
 
 ---
 
