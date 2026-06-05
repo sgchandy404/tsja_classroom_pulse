@@ -6,6 +6,21 @@ Built with Flask, SQLite, and Alpine.js — no build step required.
 
 ---
 
+## Screenshots
+
+> *Screenshots coming soon — run with `SEED_DEMO_DATA=1` to explore the app locally.*
+
+<!-- Dashboard -->
+<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
+
+<!-- Student Watch (At-Risk) -->
+<!-- ![Student Watch](docs/screenshots/student_watch.png) -->
+
+<!-- Student Detail -->
+<!-- ![Student Detail](docs/screenshots/student_detail.png) -->
+
+---
+
 ## Features
 
 - **Weekly entry form** — Teachers select a grade, week, and record a ranking (Working Towards / Meets Expectations / Exceeds Expectations) for each student × subject combination
@@ -192,6 +207,33 @@ The `_detect()` function (in `at_risk.py`, reused in the student detail view) ev
 - **Improving** — current ranking is a genuine new high (not a return-to-baseline recovery)
 
 Detection is pure Python — no SQL window functions.
+
+---
+
+## Branch Workflow
+
+```
+feature/<name>  →  dev  →  staging  →  prod
+```
+
+- Feature branches are cut from `dev` and merged back when tested locally
+- `dev` is the integration branch — all active development lands here
+- `staging` is used for QA before a production release
+- `prod` reflects the live deployment
+- `staging` and `prod` are branch-protected — no direct commits
+
+---
+
+## Contributing
+
+This is a personal project built for a specific school context and is not currently open to external contributions. Feel free to fork it and adapt it for your own use under the terms of the [MIT License](LICENSE).
+
+---
+
+## Author
+
+**Susheel George**
+[LinkedIn](https://www.linkedin.com/in/susheel-george) · [GitHub](https://github.com/sgchandy404)
 
 ---
 
