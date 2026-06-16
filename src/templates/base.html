@@ -13,6 +13,9 @@
   <!-- Flowbite CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" rel="stylesheet" />
 
+  <!-- NProgress (page-load bar) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css" rel="stylesheet" />
+
   <!-- Tailwind CDN with custom config -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -22,11 +25,11 @@
           fontFamily: { sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
           colors: {
             brand: {
-              50:  '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
+              50:  '#e8f4fd',
+              100: '#cce5fa',
+              500: '#2196F3',
+              600: '#1E7FD8',
+              700: '#1565C0',
             }
           }
         }
@@ -34,23 +37,87 @@
     }
   </script>
 
+  <style>
+    /* NProgress colour — school blue */
+    #nprogress .bar { background: #1E7FD8 !important; height: 3px; }
+    #nprogress .peg { box-shadow: 0 0 10px #1E7FD8, 0 0 5px #1E7FD8 !important; }
+    #nprogress .spinner-icon {
+      border-top-color: #1E7FD8 !important;
+      border-left-color: #1E7FD8 !important;
+    }
+
+    /* Sidebar: school gradient matching login left panel */
+    .sidebar-gradient {
+      background: linear-gradient(160deg, #5C2D91 0%, #8B1A50 55%, #C41230 100%);
+    }
+    .sidebar-deco {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+      pointer-events: none;
+    }
+
+    /* Subtle page fade-in */
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .page-in { animation: page-in 0.25s ease-out both; }
+
+    /* Body background: very light purple-to-blue */
+    body { background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%) fixed; min-height: 100vh; }
+  </style>
+
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
   {% block head %}{% endblock %}
 </head>
 
-<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+<body class="font-sans text-slate-800 antialiased">
+
+  <!-- NProgress: start immediately, finish on load -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+  <script>
+    NProgress.configure({ showSpinner: false, speed: 300, minimum: 0.1 });
+    NProgress.start();
+    window.addEventListener('load', () => NProgress.done());
+    document.addEventListener('click', function(e) {
+      const a = e.target.closest('a[href]');
+      if (a && !a.getAttribute('href').startsWith('#') && a.target !== '_blank') {
+        NProgress.start();
+      }
+    });
+    document.addEventListener('submit', () => NProgress.start());
+  </script>
+
+  <!-- Decorative background blobs -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index:0">
+    <!-- Top-right: rose/crimson — visible in the main content margin -->
+    <div class="absolute -top-24 right-0 w-[460px] h-[460px] rounded-full" style="background:rgba(196,18,48,0.13);filter:blur(55px)"></div>
+    <!-- Middle-right edge: rose -->
+    <div class="absolute top-1/2 right-0 w-72 h-72 rounded-full" style="background:rgba(196,18,48,0.10);filter:blur(50px)"></div>
+    <!-- Bottom-left: purple, peeking below the sidebar -->
+    <div class="absolute bottom-0 left-48 w-96 h-96 rounded-full" style="background:rgba(92,45,145,0.12);filter:blur(55px)"></div>
+  </div>
 
   {% block body %}
-  <div class="flex min-h-screen">
+  <div class="relative flex min-h-screen" style="z-index:1">
 
     <!-- Sidebar -->
-    <aside class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-slate-900">
+    <aside class="sidebar-gradient fixed inset-y-0 left-0 z-40 flex w-64 flex-col">
+
+      <!-- Decorative circles clipped inside a wrapper (overflow-hidden on fixed element breaks layout) -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="sidebar-deco w-48 h-48 -top-16 -left-16"></div>
+        <div class="sidebar-deco w-64 h-64 top-1/3 -right-24"></div>
+        <div class="sidebar-deco w-40 h-40 bottom-16 -left-10"></div>
+      </div>
 
       <!-- Logo -->
-      <a href="{{ url_for('index') }}" class="flex h-16 items-center gap-2.5 px-6 border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
+      <a href="{{ url_for('index') }}"
+         class="flex h-16 items-center gap-2.5 px-6 border-b border-white/10 hover:bg-white/10 transition-colors">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
           <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 3.741-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
           </svg>
@@ -59,12 +126,12 @@
       </a>
 
       <!-- Nav -->
-      <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">Menu</p>
+      <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <p class="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/40">Menu</p>
 
         <a href="{{ url_for('dashboard.index') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint == 'dashboard.index' %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint == 'dashboard.index' %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
           </svg>
@@ -72,8 +139,8 @@
         </a>
 
         <a href="{{ url_for('entry.form') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint and request.endpoint.startswith('entry.') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint and request.endpoint.startswith('entry.') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
           </svg>
@@ -81,8 +148,8 @@
         </a>
 
         <a href="{{ url_for('at_risk.index') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint and request.endpoint.startswith('at_risk.') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint and request.endpoint.startswith('at_risk.') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
           </svg>
@@ -91,14 +158,14 @@
 
         {% if perms.is_admin or perms.can_view_all or perms.is_incharge %}
         <div class="mt-4 mb-1">
-          <p class="px-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Admin</p>
+          <p class="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40">Admin</p>
         </div>
         {% endif %}
 
         {% if perms.is_admin %}
         <a href="{{ url_for('settings.index') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint and request.endpoint.startswith('settings.') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint and request.endpoint.startswith('settings.') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -107,8 +174,8 @@
         </a>
 
         <a href="{{ url_for('admin.index') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint == 'admin.index' or request.endpoint in ('admin.new_user','admin.edit_user') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint == 'admin.index' or request.endpoint in ('admin.new_user','admin.edit_user') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
           </svg>
@@ -116,8 +183,8 @@
         </a>
 
         <a href="{{ url_for('admin.grades') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint in ('admin.grades','admin.new_grade','admin.deactivate_grade','admin.reactivate_grade') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint in ('admin.grades','admin.new_grade','admin.deactivate_grade','admin.reactivate_grade') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
           </svg>
@@ -125,8 +192,8 @@
         </a>
 
         <a href="{{ url_for('admin.subjects') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint in ('admin.subjects','admin.new_subject','admin.deactivate_subject','admin.reactivate_subject') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint in ('admin.subjects','admin.new_subject','admin.deactivate_subject','admin.reactivate_subject') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
           </svg>
@@ -136,8 +203,8 @@
 
         {% if perms.is_admin or perms.is_incharge %}
         <a href="{{ url_for('admin.students') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint in ('admin.students','admin.new_student','admin.edit_student','admin.deactivate_student','admin.reactivate_student') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint in ('admin.students','admin.new_student','admin.edit_student','admin.deactivate_student','admin.reactivate_student') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
           </svg>
@@ -147,8 +214,8 @@
 
         {% if perms.is_admin or perms.can_view_all %}
         <a href="{{ url_for('audit.index') }}"
-           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                  {% if request.endpoint and request.endpoint.startswith('audit.') %}bg-brand-600 text-white{% else %}text-slate-400 hover:bg-slate-800 hover:text-white{% endif %}">
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150
+                  {% if request.endpoint and request.endpoint.startswith('audit.') %}bg-white/20 text-white{% else %}text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
           <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
           </svg>
@@ -158,16 +225,16 @@
       </nav>
 
       <!-- User footer -->
-      <div class="border-t border-slate-800 px-4 py-4">
+      <div class="border-t border-white/10 px-4 py-4">
         <div class="flex items-center gap-3">
-          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-slate-300">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-semibold text-white">
             {{ current_user.username[0].upper() if current_user.is_authenticated else '?' }}
           </div>
           <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium text-slate-200">
+            <p class="truncate text-sm font-medium text-white">
               {{ current_user.username if current_user.is_authenticated else 'Guest' }}
             </p>
-            <p class="text-xs text-slate-500">
+            <p class="text-xs text-white/50">
               {% if perms.is_admin %}Admin
               {% elif perms.is_coordinator %}Coordinator
               {% elif perms.is_incharge %}In-Charge
@@ -176,7 +243,7 @@
             </p>
           </div>
           <a href="{{ url_for('auth.logout') }}" title="Log out"
-             class="text-slate-500 hover:text-slate-300 transition-colors">
+             class="text-white/40 hover:text-white/80 transition-colors">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
             </svg>
@@ -186,13 +253,48 @@
     </aside>
 
     <!-- Main content area -->
-    <div class="flex flex-1 flex-col ml-64">
+    <div class="flex flex-1 flex-col ml-64 page-in">
 
       <!-- Top bar -->
-      <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/80 backdrop-blur px-8">
+      <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-purple-100/80 bg-white/85 backdrop-blur px-8 shadow-sm">
         <div class="flex-1">
           <h1 class="text-base font-semibold text-slate-900">{% block page_title %}{% endblock %}</h1>
         </div>
+
+        <!-- Context pills -->
+        <div class="flex items-center gap-2">
+          {% if topbar_week_label %}
+          <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500 whitespace-nowrap shrink-0">
+            <svg class="h-3 w-3 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 9v7.5" />
+            </svg>
+            {{ topbar_week_label }}
+          </span>
+          {% endif %}
+
+          {% if topbar_term %}
+          <span class="hidden md:inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs text-purple-700 whitespace-nowrap shrink-0">
+            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-purple-400"></span>
+            {{ topbar_term.name }}{% if topbar_ay_label %} · {{ topbar_ay_label }}{% endif %}
+          </span>
+          {% endif %}
+
+          {% if topbar_pending is not none %}
+            {% if topbar_pending > 0 %}
+            <a href="{{ url_for('entry.form') }}"
+               class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 whitespace-nowrap shrink-0 hover:bg-amber-100 transition-colors">
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse"></span>
+              {{ topbar_pending }} pending
+            </a>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700 whitespace-nowrap shrink-0">
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-green-400"></span>
+              All entered
+            </span>
+            {% endif %}
+          {% endif %}
+        </div>
+
         <div class="flex items-center gap-3">
           {% block header_actions %}{% endblock %}
         </div>

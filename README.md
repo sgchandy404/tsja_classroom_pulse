@@ -17,7 +17,6 @@ Student Watch (At-Risk)
 
 Student Detail
 ![Student Detail](docs/screenshots/student_detail.png)
-
 ---
 
 ## Features

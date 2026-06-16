@@ -1,9 +1,11 @@
 import datetime
+import json
 from collections import defaultdict
 from flask import Blueprint, render_template, request, redirect, url_for, abort
 from flask_login import login_required
 from models import db, Student, Subject, WeeklyEntry, RANKINGS
 from permissions import perms as get_perms
+from routes.at_risk import _detect, _active_term_filter
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -141,6 +143,34 @@ def index():
             "counts": {r: counts[r] for r in RANKINGS},
         })
 
+    # At-risk summary for hero card (current term, visible grades only)
+    _, _, active_term = _active_term_filter()
+    ar_q = (
+        WeeklyEntry.query
+        .join(Student)
+        .filter(Student.is_active == True)
+        .order_by(WeeklyEntry.student_id, WeeklyEntry.subject_id,
+                  WeeklyEntry.iso_year, WeeklyEntry.iso_week)
+    )
+    if vg is not None:
+        ar_q = ar_q.filter(Student.grade.in_(list(vg)))
+    ar_entries = ar_q.all()
+    if active_term:
+        ar_entries = [e for e in ar_entries if active_term.contains_week(e.iso_week, e.iso_year)]
+    ar_grouped = defaultdict(list)
+    for e in ar_entries:
+        ar_grouped[(e.student_id, e.subject_id)].append(e)
+    at_risk_counts = {"declining": 0, "stuck": 0, "improving": 0, "total_students": 0}
+    at_risk_sids = set()
+    for (s_id, _), es in ar_grouped.items():
+        flagged, reason = _detect(es)
+        if not flagged:
+            continue
+        at_risk_counts[reason] = at_risk_counts.get(reason, 0) + 1
+        if reason in ("declining", "stuck"):
+            at_risk_sids.add(s_id)
+    at_risk_counts["total_students"] = len(at_risk_sids)
+
     prev_week, prev_year = _adjacent_week(selected_week, selected_year, -1)
     next_week, next_year = _adjacent_week(selected_week, selected_year, +1)
 
@@ -168,4 +198,14 @@ def index():
         rankings=RANKINGS,
         months=MONTHS,
         year_range=year_range,
+        at_risk_counts=at_risk_counts,
+        active_term=active_term,
+        breakdown_json=json.dumps([{
+            "subject": r["subject"],
+            "wt": r["counts"]["Working Towards"],
+            "me": r["counts"]["Meets Expectations"],
+            "ee": r["counts"]["Exceeds Expectations"],
+            "total": r["total"],
+            "students": r["student_count"],
+        } for r in breakdown]),
     )

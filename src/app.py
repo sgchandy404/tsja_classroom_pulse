@@ -62,6 +62,48 @@ def create_app() -> Flask:
     def inject_perms():
         return {"perms": Permissions(current_user)}
 
+    # Inject topbar context: current week, active term, entries pending
+    @app.context_processor
+    def inject_topbar():
+        if not current_user.is_authenticated:
+            return {}
+        today = datetime.date.today()
+        iso   = today.isocalendar()
+        week, year = iso.week, iso.year
+        try:
+            monday = datetime.date.fromisocalendar(year, week, 1)
+            sunday = monday + datetime.timedelta(days=6)
+            week_label = f"Wk {week} · {monday.strftime('%d %b')} – {sunday.strftime('%d %b')}"
+        except ValueError:
+            week_label = f"Week {week}"
+        ay = AcademicYear.query.filter_by(is_active=True).first()
+        active_term = None
+        ay_label    = None
+        if ay:
+            ay_label = ay.label
+            for t in ay.terms:
+                if t.contains_week(week, year):
+                    active_term = t
+                    break
+        p = Permissions(current_user)
+        pending = None
+        if not p.is_admin and not p.is_coordinator:
+            pairs = p.enterable_pairs()
+            if pairs:
+                total_slots, entered = 0, 0
+                for grade, sid in pairs:
+                    total_slots += Student.query.filter_by(grade=grade, is_active=True).count()
+                    entered     += WeeklyEntry.query.filter_by(
+                        subject_id=sid, iso_week=week, iso_year=year
+                    ).count()
+                pending = max(0, total_slots - entered)
+        return {
+            "topbar_week_label": week_label,
+            "topbar_term":       active_term,
+            "topbar_ay_label":   ay_label,
+            "topbar_pending":    pending,
+        }
+
     with app.app_context():
         db.create_all()
         _migrate_schema()
