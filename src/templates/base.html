@@ -107,8 +107,9 @@
     <!-- Sidebar -->
     <aside class="sidebar-gradient fixed inset-y-0 left-0 z-40 flex w-64 flex-col">
 
-      <!-- Decorative circles clipped inside a wrapper (overflow-hidden on fixed element breaks layout) -->
+      <!-- Decorative circles + dot grid clipped inside a wrapper -->
       <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.10) 1px,transparent 1px);background-size:18px 18px;"></div>
         <div class="sidebar-deco w-48 h-48 -top-16 -left-16"></div>
         <div class="sidebar-deco w-64 h-64 top-1/3 -right-24"></div>
         <div class="sidebar-deco w-40 h-40 bottom-16 -left-10"></div>
@@ -326,6 +327,8 @@
 
   <!-- Flowbite JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+  <!-- ApexCharts -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
