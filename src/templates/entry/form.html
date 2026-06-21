@@ -62,15 +62,51 @@
       </select>
     </div>
 
-    <!-- Save button -->
-    <button
-      @click="submitForm()"
-      :disabled="!subjectId || students.length === 0"
-      class="ml-auto rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
-             hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-    >
-      Save Rankings
-    </button>
+    <!-- Actions -->
+    <div class="ml-auto flex items-center gap-2">
+
+      <!-- Export template -->
+      <a
+        :href="subjectId ? `/entry/export?grade=${encodeURIComponent(grade)}&subject_id=${subjectId}&ft_year=${ftYear}&ft_month=${ftMonth}&ft_period=${ftPeriod}` : '#'"
+        :class="subjectId ? '' : 'pointer-events-none opacity-40'"
+        class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700
+               hover:bg-slate-50 shadow-sm transition-colors flex items-center gap-1.5"
+        :download="subjectId ? true : null"
+      >
+        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        Export
+      </a>
+
+      <!-- Import -->
+      <form method="POST" action="{{ url_for('entry.import_rankings') }}"
+            enctype="multipart/form-data">
+        <input x-ref="importFile" type="file" name="xlsx_file" accept=".xlsx" class="hidden"
+               @change="$event.target.form.submit()" />
+        <button type="button"
+          @click="$refs.importFile.click()"
+          :disabled="!subjectId"
+          class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700
+                 hover:bg-slate-50 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+        >
+          <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          Import
+        </button>
+      </form>
+
+      <!-- Save -->
+      <button
+        @click="submitForm()"
+        :disabled="!subjectId || students.length === 0"
+        class="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
+               hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        Save Rankings
+      </button>
+    </div>
   </div>
 
   <!-- Loading -->
@@ -157,7 +193,7 @@
               <div class="flex items-center gap-3 py-2">
                 <label class="flex-1 text-xs text-slate-600 leading-snug">
                   <span x-text="r.name"></span>
-                  <span x-show="!r.is_required" class="ml-1 text-[10px] text-slate-400">(opt)</span>
+                  <span x-show="!r.is_required" class="ml-1 text-[10px] text-slate-400">(Optional)</span>
                 </label>
                 <select
                   x-model="rankings[`${student.id}_${r.id}`]"
