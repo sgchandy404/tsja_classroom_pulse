@@ -62,51 +62,6 @@
       </select>
     </div>
 
-    <!-- Actions -->
-    <div class="ml-auto flex items-center gap-2">
-
-      <!-- Export template -->
-      <a
-        :href="subjectId ? `/entry/export?grade=${encodeURIComponent(grade)}&subject_id=${subjectId}&ft_year=${ftYear}&ft_month=${ftMonth}&ft_period=${ftPeriod}` : '#'"
-        :class="subjectId ? '' : 'pointer-events-none opacity-40'"
-        class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700
-               hover:bg-slate-50 shadow-sm transition-colors flex items-center gap-1.5"
-        :download="subjectId ? true : null"
-      >
-        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-        </svg>
-        Export
-      </a>
-
-      <!-- Import -->
-      <form method="POST" action="{{ url_for('entry.import_rankings') }}"
-            enctype="multipart/form-data">
-        <input x-ref="importFile" type="file" name="xlsx_file" accept=".xlsx" class="hidden"
-               @change="$event.target.form.submit()" />
-        <button type="button"
-          @click="$refs.importFile.click()"
-          :disabled="!subjectId"
-          class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700
-                 hover:bg-slate-50 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-        >
-          <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-          </svg>
-          Import
-        </button>
-      </form>
-
-      <!-- Save -->
-      <button
-        @click="submitForm()"
-        :disabled="!subjectId || students.length === 0"
-        class="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
-               hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-      >
-        Save Rankings
-      </button>
-    </div>
   </div>
 
   <!-- Loading -->
@@ -166,14 +121,41 @@
       <div class="flex items-center gap-2">
         <span class="text-sm font-semibold text-slate-800" x-text="subjectName"></span>
         <span class="text-xs text-slate-400" x-text="'· ' + rubrics.length + ' rubric' + (rubrics.length !== 1 ? 's' : '') + ' · ' + students.length + ' students'"></span>
+        <span x-show="savedCount > 0"
+              class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+          </svg>
+          <span x-text="savedCount + ' pre-filled'"></span>
+        </span>
       </div>
-      <span x-show="savedCount > 0"
-            class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-        </svg>
-        <span x-text="savedCount + ' pre-filled'"></span>
-      </span>
+
+      <!-- Export / Import live here -->
+      <div class="flex items-center gap-2">
+        <a
+          :href="`/entry/export?grade=${encodeURIComponent(grade)}&subject_id=${subjectId}&ft_year=${ftYear}&ft_month=${ftMonth}&ft_period=${ftPeriod}`"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
+                 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Export
+        </a>
+
+        <form method="POST" action="{{ url_for('entry.import_rankings') }}" enctype="multipart/form-data">
+          <input x-ref="importFile" type="file" name="xlsx_file" accept=".xlsx" class="hidden"
+                 @change="$event.target.form.submit()" />
+          <button type="button" @click="$refs.importFile.click()"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
+                         text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+            <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            Import
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Cards grid -->
@@ -219,6 +201,31 @@
       </template>
     </div>
   </div>
+
+  <!-- Sticky Save bar -->
+  <div
+    x-show="subjectId && students.length > 0"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 translate-y-4"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    class="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/90 backdrop-blur-sm px-6 py-3 flex items-center justify-between shadow-lg"
+  >
+    <span class="text-xs text-slate-400">
+      <span x-text="subjectName"></span>
+      <span x-show="savedCount > 0" class="text-green-600 font-medium" x-text="' · ' + savedCount + ' saved'"></span>
+    </span>
+    <button
+      @click="submitForm()"
+      :disabled="students.length === 0"
+      class="rounded-lg bg-brand-600 px-6 py-2 text-sm font-semibold text-white shadow-sm
+             hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+    >
+      Save Rankings
+    </button>
+  </div>
+
+  <!-- spacing so cards aren't hidden under sticky bar -->
+  <div x-show="subjectId && students.length > 0" class="h-16"></div>
 
   <!-- Hidden POST form -->
   <form id="entry-form" method="POST" action="{{ url_for('entry.submit') }}" class="hidden">
