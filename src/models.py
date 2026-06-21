@@ -1,3 +1,4 @@
+import calendar
 import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
@@ -9,6 +10,52 @@ RANKINGS = ["Working Towards", "Meets Expectations", "Exceeds Expectations"]
 RANKING_ORDER = {r: i + 1 for i, r in enumerate(RANKINGS)}
 ROLES = ["teacher", "incharge", "coordinator", "admin"]
 
+# Tiering thresholds (stuck rubric count per subject)
+WARNING_THRESHOLD  = 1   # 1–2 stuck rubrics → Warning
+AT_RISK_THRESHOLD  = 3   # 3+ stuck rubrics  → At-Risk
+
+
+# ---------------------------------------------------------------------------
+# Fortnight helpers
+# ---------------------------------------------------------------------------
+
+def date_to_fortnight(d: datetime.date) -> tuple[int, int, int]:
+    """Return (year, month, period) where period is 1 (1–15) or 2 (16–end)."""
+    return d.year, d.month, 1 if d.day <= 15 else 2
+
+
+def fortnight_start(year: int, month: int, period: int) -> datetime.date:
+    return datetime.date(year, month, 1 if period == 1 else 16)
+
+
+def fortnight_end(year: int, month: int, period: int) -> datetime.date:
+    last = calendar.monthrange(year, month)[1]
+    return datetime.date(year, month, 15 if period == 1 else last)
+
+
+def fortnight_label(year: int, month: int, period: int) -> str:
+    end = fortnight_end(year, month, period)
+    month_abbr = datetime.date(year, month, 1).strftime("%b")
+    if period == 1:
+        return f"1–15 {month_abbr} {year}"
+    return f"16–{end.day} {month_abbr} {year}"
+
+
+def prev_fortnight(year: int, month: int, period: int) -> tuple[int, int, int]:
+    if period == 2:
+        return year, month, 1
+    if month == 1:
+        return year - 1, 12, 2
+    return year, month - 1, 2
+
+
+def next_fortnight(year: int, month: int, period: int) -> tuple[int, int, int]:
+    if period == 1:
+        return year, month, 2
+    if month == 12:
+        return year + 1, 1, 1
+    return year, month + 1, 1
+
 
 # ---------------------------------------------------------------------------
 # User & roles
@@ -19,7 +66,6 @@ class User(UserMixin, db.Model):
     id            = db.Column(db.Integer, primary_key=True)
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    # Stored as 'active' to avoid collision with Flask-Login's is_active property
     active        = db.Column(db.Boolean, nullable=False, default=True)
 
     roles      = db.relationship("UserRole", back_populates="user",
@@ -32,7 +78,6 @@ class User(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
-    # Flask-Login checks .is_active; delegate to our column
     @property
     def is_active(self):
         return self.active
@@ -49,7 +94,6 @@ class User(UserMixin, db.Model):
         return bool(self.role_names & set(roles))
 
     def display_roles(self):
-        """Human-readable role labels for the UI."""
         labels = []
         rnames = self.role_names
         if "admin" in rnames:
@@ -68,8 +112,8 @@ class UserRole(db.Model):
     __tablename__ = "user_roles"
     id         = db.Column(db.Integer, primary_key=True)
     user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    role       = db.Column(db.String(20), nullable=False)  # teacher|incharge|coordinator|admin
-    grade      = db.Column(db.String(20), nullable=True)   # None for coordinator/admin
+    role       = db.Column(db.String(20), nullable=False)
+    grade      = db.Column(db.String(20), nullable=True)
     subject_id = db.Column(db.Integer, db.ForeignKey("subjects.id"), nullable=True)
 
     user    = db.relationship("User", back_populates="roles")
@@ -105,31 +149,17 @@ class Term(db.Model):
     id               = db.Column(db.Integer, primary_key=True)
     academic_year_id = db.Column(db.Integer, db.ForeignKey("academic_years.id"), nullable=False)
     name             = db.Column(db.String(20), nullable=False)
-    start_iso_week   = db.Column(db.Integer, nullable=False)
-    start_iso_year   = db.Column(db.Integer, nullable=False)
-    end_iso_week     = db.Column(db.Integer, nullable=False)
-    end_iso_year     = db.Column(db.Integer, nullable=False)
+    start_date       = db.Column(db.Date, nullable=False)
+    end_date         = db.Column(db.Date, nullable=False)
     is_locked        = db.Column(db.Boolean, nullable=False, default=False)
 
     academic_year = db.relationship("AcademicYear", back_populates="terms")
 
-    @property
-    def start_date(self):
-        try:
-            return datetime.date.fromisocalendar(self.start_iso_year, self.start_iso_week, 1)
-        except ValueError:
-            return None
-
-    @property
-    def end_date(self):
-        try:
-            return datetime.date.fromisocalendar(self.end_iso_year, self.end_iso_week, 7)
-        except ValueError:
-            return None
-
-    def contains_week(self, iso_week: int, iso_year: int) -> bool:
-        w = (iso_year, iso_week)
-        return (self.start_iso_year, self.start_iso_week) <= w <= (self.end_iso_year, self.end_iso_week)
+    def contains_fortnight(self, year: int, month: int, period: int) -> bool:
+        """True if this fortnight overlaps with the term's date range."""
+        fs = fortnight_start(year, month, period)
+        fe = fortnight_end(year, month, period)
+        return self.start_date <= fe and self.end_date >= fs
 
     __table_args__ = (
         db.UniqueConstraint("academic_year_id", "name", name="uq_term_per_year"),
@@ -159,7 +189,7 @@ class Student(db.Model):
     grade       = db.Column(db.String(20), nullable=False)
     is_active   = db.Column(db.Boolean, nullable=False, default=True)
 
-    entries = db.relationship("WeeklyEntry", back_populates="student",
+    entries = db.relationship("FortnightEntry", back_populates="student",
                               cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -174,7 +204,10 @@ class Subject(db.Model):
     grade     = db.Column(db.String(20), nullable=False)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
-    entries = db.relationship("WeeklyEntry", back_populates="subject",
+    rubrics = db.relationship("Rubric", back_populates="subject",
+                              cascade="all, delete-orphan",
+                              order_by="Rubric.display_order, Rubric.id")
+    entries = db.relationship("FortnightEntry", back_populates="subject",
                               cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -183,16 +216,41 @@ class Subject(db.Model):
 
 
 # ---------------------------------------------------------------------------
-# Weekly entries (with audit fields)
+# Rubrics
 # ---------------------------------------------------------------------------
 
-class WeeklyEntry(db.Model):
-    __tablename__ = "weekly_entries"
+class Rubric(db.Model):
+    __tablename__ = "rubrics"
+    id            = db.Column(db.Integer, primary_key=True)
+    subject_id    = db.Column(db.Integer, db.ForeignKey("subjects.id"), nullable=False)
+    name          = db.Column(db.String(100), nullable=False)
+    description   = db.Column(db.String(200), nullable=True)
+    is_required   = db.Column(db.Boolean, nullable=False, default=True)
+    is_active     = db.Column(db.Boolean, nullable=False, default=True)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
+
+    subject = db.relationship("Subject", back_populates="rubrics")
+    entries = db.relationship("FortnightEntry", back_populates="rubric",
+                              cascade="all, delete-orphan")
+
+    __table_args__ = (
+        db.UniqueConstraint("subject_id", "name", name="uq_rubric_per_subject"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Fortnight entries
+# ---------------------------------------------------------------------------
+
+class FortnightEntry(db.Model):
+    __tablename__ = "fortnight_entries"
     id         = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey("subjects.id"), nullable=False)
-    iso_week   = db.Column(db.Integer, nullable=False)
-    iso_year   = db.Column(db.Integer, nullable=False)
+    rubric_id  = db.Column(db.Integer, db.ForeignKey("rubrics.id"), nullable=False)
+    ft_year    = db.Column(db.Integer, nullable=False)
+    ft_month   = db.Column(db.Integer, nullable=False)
+    ft_period  = db.Column(db.Integer, nullable=False)   # 1 = 1st–15th, 2 = 16th–end
     ranking    = db.Column(db.String(30), nullable=False)
 
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
@@ -202,10 +260,11 @@ class WeeklyEntry(db.Model):
 
     student = db.relationship("Student", back_populates="entries")
     subject = db.relationship("Subject", back_populates="entries")
+    rubric  = db.relationship("Rubric",  back_populates="entries")
 
     __table_args__ = (
-        db.UniqueConstraint("student_id", "subject_id", "iso_week", "iso_year",
-                            name="uq_entry_per_week"),
+        db.UniqueConstraint("student_id", "rubric_id", "ft_year", "ft_month", "ft_period",
+                            name="uq_entry_per_fortnight"),
     )
 
 
@@ -218,7 +277,7 @@ class AuditLog(db.Model):
     id         = db.Column(db.Integer, primary_key=True)
     user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     timestamp  = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    action     = db.Column(db.String(10), nullable=False)   # "create" | "edit"
+    action     = db.Column(db.String(10), nullable=False)
     model_name = db.Column(db.String(40), nullable=False)
     record_id  = db.Column(db.Integer, nullable=False)
     field_name = db.Column(db.String(40), nullable=True)
@@ -230,7 +289,7 @@ class AuditLog(db.Model):
 
 
 # ---------------------------------------------------------------------------
-# App config (key-value store for settings like grace_period_hours)
+# App config
 # ---------------------------------------------------------------------------
 
 class AppConfig(db.Model):

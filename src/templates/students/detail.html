@@ -8,27 +8,23 @@
 <style>
   @keyframes row-flash {
     0%   { background-color: transparent; }
-    30%  { background-color: #eef2ff; }
-    60%  { background-color: #e0e7ff; }
+    30%  { background-color: #fef2f2; }
+    60%  { background-color: #fee2e2; }
     100% { background-color: transparent; }
   }
-  .row-highlight {
-    animation: row-flash 1.6s ease-in-out;
-  }
+  .row-highlight { animation: row-flash 1.6s ease-in-out; }
 </style>
 {% endblock %}
 
 {% block header_actions %}
 <div class="flex items-center gap-2">
-
-  <!-- Term selector -->
   {% if terms %}
   <form method="GET" action="{{ url_for('students.detail', student_id=student.id) }}">
     <select
       name="term_id"
       onchange="this.form.submit()"
       class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
-             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+             focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
     >
       {% for t in terms %}
         <option value="{{ t.id }}" {% if selected_term and t.id == selected_term.id %}selected{% endif %}>
@@ -38,7 +34,6 @@
     </select>
   </form>
   {% endif %}
-
 </div>
 
 <div
@@ -46,21 +41,17 @@
   x-init="init()"
   class="flex items-center gap-2"
 >
-  <!-- Grade dropdown -->
   <select
     x-model="selectedId"
     @change="navigate()"
     class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm
-           focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+           focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
   >
     {% for s in grade_mates %}
-      <option value="{{ s.id }}" {% if s.id == student.id %}selected{% endif %}>
-        {{ s.name }}
-      </option>
+      <option value="{{ s.id }}" {% if s.id == student.id %}selected{% endif %}>{{ s.name }}</option>
     {% endfor %}
   </select>
 
-  <!-- Search -->
   <div class="relative">
     <input
       x-model="query"
@@ -70,33 +61,23 @@
       type="text"
       placeholder="Search student…"
       class="w-44 rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-700 shadow-sm
-             focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+             focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
     />
-    <!-- Search icon -->
     <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
          fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
     </svg>
-
-    <!-- Results dropdown -->
-    <div
-      x-show="results.length > 0"
-      x-cloak
-      class="absolute right-0 top-full mt-1 z-50 w-64 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden"
-    >
-      <!-- Scope label -->
+    <div x-show="results.length > 0" x-cloak
+         class="absolute right-0 top-full mt-1 z-50 w-64 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
       <p class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100"
          x-text="scopeLabel"></p>
       <ul class="max-h-52 overflow-y-auto divide-y divide-slate-50">
         <template x-for="(r, i) in results" :key="r.id">
           <li>
-            <a
-              :href="'/students/' + r.id"
-              :id="'result-' + i"
-              @keydown.arrow-down.prevent="focusResult(i + 1)"
-              @keydown.arrow-up.prevent="focusResult(i - 1)"
-              class="flex items-center gap-3 px-3 py-2.5 hover:bg-indigo-50 transition-colors"
-            >
+            <a :href="'/students/' + r.id" :id="'result-' + i"
+               @keydown.arrow-down.prevent="focusResult(i + 1)"
+               @keydown.arrow-up.prevent="focusResult(i - 1)"
+               class="flex items-center gap-3 px-3 py-2.5 hover:bg-brand-50 transition-colors">
               <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600"
                    x-text="r.name[0]"></div>
               <div class="min-w-0">
@@ -124,11 +105,13 @@
 {% endif %}
 
 <!-- Student info card -->
+{% set risk_count    = subject_rows | selectattr('tier', 'equalto', 'at_risk')  | list | length %}
+{% set warning_count = subject_rows | selectattr('tier', 'equalto', 'warning')  | list | length %}
 <div
   x-data="{ highlightRisk: false }"
   class="mb-6 flex items-center gap-5 rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm"
 >
-  <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-600">
+  <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-600">
     {{ student.name[0].upper() }}
   </div>
   <div class="flex-1 min-w-0">
@@ -136,13 +119,10 @@
     <p class="text-sm text-slate-400">{{ student.grade }} &middot; Roll No. {{ student.roll_number }}</p>
   </div>
 
-  {% set risk_count = subject_rows | selectattr('is_risk') | list | length %}
-  {% if risk_count > 0 %}
-    <!-- Clickable at-risk badge -->
+  {% if risk_count > 0 or warning_count > 0 %}
     <button
       @click="
-        highlightRisk = true;
-        {% for row in subject_rows %}{% if row.is_risk %}
+        {% for row in subject_rows %}{% if row.tier in ('at_risk', 'warning') %}
           const el{{ row.subject.id }} = document.getElementById('subj-row-{{ row.subject.id }}');
           if (el{{ row.subject.id }}) {
             el{{ row.subject.id }}.classList.remove('row-highlight');
@@ -151,16 +131,18 @@
             el{{ row.subject.id }}.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         {% endif %}{% endfor %}
-        setTimeout(() => highlightRisk = false, 1600);
       "
-      class="flex cursor-pointer items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5
-             hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-300"
+      class="flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 hover:opacity-90 transition-opacity focus:outline-none
+             {% if risk_count > 0 %}bg-red-50 border-red-200{% else %}bg-amber-50 border-amber-200{% endif %}"
     >
-      <svg class="h-4 w-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <svg class="h-4 w-4 shrink-0 {% if risk_count > 0 %}text-red-500{% else %}text-amber-500{% endif %}"
+           fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
       </svg>
-      <span class="text-sm font-medium text-red-700">
-        At-risk in {{ risk_count }} subject{{ 's' if risk_count > 1 }}
+      <span class="text-sm font-medium {% if risk_count > 0 %}text-red-700{% else %}text-amber-700{% endif %}">
+        {% if risk_count > 0 %}At-risk in {{ risk_count }} subject{{ 's' if risk_count > 1 }}{% endif %}
+        {% if risk_count > 0 and warning_count > 0 %} · {% endif %}
+        {% if warning_count > 0 %}Warning in {{ warning_count }} subject{{ 's' if warning_count > 1 }}{% endif %}
       </span>
     </button>
   {% else %}
@@ -173,76 +155,93 @@
   {% endif %}
 </div>
 
-{% if not weeks %}
+{% if not periods %}
   <div class="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200">
     <p class="text-sm font-medium text-slate-500">No entries recorded yet for this student.</p>
     <a href="{{ url_for('entry.form', grade=student.grade) }}"
-       class="mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-500">
+       class="mt-3 text-xs font-medium text-brand-600 hover:text-brand-500">
       Enter rankings →
     </a>
   </div>
 
 {% else %}
-  <!-- History table -->
+  <!-- History table: subject header rows + rubric sub-rows -->
   <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-    <table class="min-w-full text-sm">
+    <table class="min-w-full text-sm border-collapse">
       <thead>
         <tr class="border-b border-slate-100 bg-slate-50">
-          <th class="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Subject</th>
-          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Status</th>
-          {% for year, week in weeks %}
+          <th class="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Subject / Rubric</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Latest</th>
+          {% for lbl in period_labels %}
             <th class="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
-              Wk {{ week }}<br>
-              <span class="font-normal text-slate-400 normal-case">{{ year }}</span>
+              {{ lbl }}
             </th>
           {% endfor %}
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100">
+      <tbody>
         {% for row in subject_rows %}
-        <tr
-          id="subj-row-{{ row.subject.id }}"
-          class="transition-colors hover:bg-slate-50 {% if row.is_risk %}bg-red-50/40{% endif %}"
-        >
-          <!-- Subject name + flag -->
-          <td class="sticky left-0 bg-white px-6 py-4 font-medium text-slate-800 whitespace-nowrap
-                     {% if row.is_risk %}bg-red-50/40{% endif %}">
-            <div class="flex items-center gap-2">
-              {{ row.subject.name }}
-              {% if row.is_risk %}
-                {% if row.reason == 'declining' %}
-                  <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600 ring-1 ring-red-200">↘ Declining</span>
-                {% else %}
-                  <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-600 ring-1 ring-amber-200">⊘ Stuck</span>
+          <!-- Subject header row -->
+          <tr id="subj-row-{{ row.subject.id }}"
+              class="border-t border-slate-200 bg-slate-50/80">
+            <td class="sticky left-0 bg-slate-50/80 px-6 py-2.5 font-semibold text-slate-700 whitespace-nowrap" colspan="2">
+              <div class="flex items-center gap-2">
+                {{ row.subject.name }}
+                {% if row.tier == 'at_risk' %}
+                  <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style="background:#fef2f2;color:#E07060;">⚠ At-Risk · {{ row.stuck_count }} rubric{{ 's' if row.stuck_count != 1 }} flagged</span>
+                {% elif row.tier == 'warning' %}
+                  <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
+                    Warning · {{ row.stuck_count }} rubric{{ 's' if row.stuck_count != 1 }} flagged
+                  </span>
                 {% endif %}
-              {% endif %}
-            </div>
-          </td>
-
-          <!-- Latest ranking -->
-          <td class="px-4 py-4 whitespace-nowrap">
-            {% if row.latest %}{{ ranking_badge(row.latest) }}{% else %}<span class="text-xs text-slate-300">—</span>{% endif %}
-          </td>
-
-          <!-- Per-week cells -->
-          {% for entry in row.history %}
-            <td class="px-4 py-4 text-center">
-              {% if entry.ranking %}
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold
-                  {% if entry.ranking == 'Working Towards' %}bg-red-100 text-red-700
-                  {% elif entry.ranking == 'Meets Expectations' %}bg-amber-100 text-amber-700
-                  {% else %}bg-green-100 text-green-700{% endif %}"
-                  title="{{ entry.ranking }}">
-                  {% if entry.ranking == 'Working Towards' %}WT
-                  {% elif entry.ranking == 'Meets Expectations' %}ME
-                  {% else %}EE{% endif %}
-                </span>
-              {% else %}
-                <span class="text-slate-200">·</span>
-              {% endif %}
+              </div>
             </td>
+            {% for lbl in period_labels %}
+              <td class="px-4 py-2.5"></td>
+            {% endfor %}
+          </tr>
+
+          <!-- Rubric sub-rows -->
+          {% for rr in row.rubric_rows %}
+          <tr class="border-t border-slate-50 hover:bg-slate-50 transition-colors
+                     {% if rr.is_flagged %}bg-red-50/20{% endif %}">
+            <td class="sticky left-0 bg-white px-6 py-3 whitespace-nowrap
+                       {% if rr.is_flagged %}bg-red-50/20{% endif %}">
+              <div class="flex items-center gap-2 pl-4">
+                <span class="text-slate-600">{{ rr.rubric.name }}</span>
+                {% if not rr.rubric.is_required %}
+                  <span class="text-[10px] text-slate-400">(optional)</span>
+                {% endif %}
+                {% if rr.reason == 'declining' %}
+                  <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600">↘ Declining</span>
+                {% elif rr.reason == 'stuck' %}
+                  <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-600">⊘ Stuck</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {% if rr.latest %}{{ ranking_badge(rr.latest) }}{% else %}<span class="text-xs text-slate-300">—</span>{% endif %}
+            </td>
+            {% for h in rr.history %}
+              <td class="px-4 py-3 text-center">
+                {% if h.ranking %}
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold
+                    {% if h.ranking == 'Working Towards' %}bg-red-100 text-red-700
+                    {% elif h.ranking == 'Meets Expectations' %}bg-blue-100 text-blue-700
+                    {% else %}bg-green-100 text-green-700{% endif %}"
+                    title="{{ h.ranking }}">
+                    {% if h.ranking == 'Working Towards' %}WT
+                    {% elif h.ranking == 'Meets Expectations' %}ME
+                    {% else %}EE{% endif %}
+                  </span>
+                {% else %}
+                  <span class="text-slate-200">·</span>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
           {% endfor %}
-        </tr>
         {% endfor %}
       </tbody>
     </table>
@@ -251,7 +250,7 @@
   <!-- Legend -->
   <div class="mt-4 flex items-center gap-5 text-xs text-slate-400">
     <span class="flex items-center gap-1.5"><span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-[10px] font-bold text-red-700">WT</span> Working Towards</span>
-    <span class="flex items-center gap-1.5"><span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-700">ME</span> Meets Expectations</span>
+    <span class="flex items-center gap-1.5"><span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">ME</span> Meets Expectations</span>
     <span class="flex items-center gap-1.5"><span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-[10px] font-bold text-green-700">EE</span> Exceeds Expectations</span>
   </div>
 {% endif %}
@@ -280,20 +279,15 @@ function studentNav() {
     search() {
       const q = this.query.trim().toLowerCase();
       if (!q) { this.results = []; return; }
-
       const match = list => list.filter(s =>
         s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q)
       );
-
-      // Search within same grade first
       let hits = match(this.gradeStudents).filter(s => s.id !== {{ student.id }});
       if (hits.length > 0) {
         this.scopeLabel = '{{ student.grade }}';
         this.results = hits.slice(0, 8);
         return;
       }
-
-      // Fallback: all grades
       hits = match(this.allStudents).filter(s => s.id !== {{ student.id }});
       this.scopeLabel = hits.length ? 'All grades' : '';
       this.results = hits.slice(0, 8);

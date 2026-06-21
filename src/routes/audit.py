@@ -5,7 +5,7 @@ Coordinators: read-only.  Admins: read-only (logs are never deleted by anyone).
 import datetime
 from flask import Blueprint, render_template, request
 from flask_login import login_required
-from models import db, AuditLog, User, WeeklyEntry, AcademicYear, Term
+from models import db, AuditLog, User, FortnightEntry, AcademicYear, Term
 from permissions import require_role
 
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
@@ -36,20 +36,22 @@ def _describe(log: AuditLog) -> str:
     old = log.old_value or ""
     new = log.new_value or ""
 
-    # ── WeeklyEntry ──────────────────────────────────────────────────────────
-    if m == "WeeklyEntry":
-        entry = db.session.get(WeeklyEntry, log.record_id)
+    # ── FortnightEntry ───────────────────────────────────────────────────────
+    if m == "FortnightEntry":
+        from models import fortnight_label
+        entry = db.session.get(FortnightEntry, log.record_id)
         if entry:
-            student = entry.student.name
-            subject = entry.subject.name
-            week_lbl = f"week {entry.iso_week}/{entry.iso_year}"
+            student  = entry.student.name
+            subject  = entry.subject.name
+            rubric   = entry.rubric.name
+            ft_lbl   = fortnight_label(entry.ft_year, entry.ft_month, entry.ft_period)
         else:
-            student = subject = f"#{log.record_id}"
-            week_lbl = ""
+            student = subject = rubric = f"#{log.record_id}"
+            ft_lbl = ""
         if a == "create":
-            return f"Recorded {student} · {subject} as '{new}'" + (f" ({week_lbl})" if week_lbl else "")
+            return f"Recorded {student} · {subject} / {rubric} as '{new}'" + (f" ({ft_lbl})" if ft_lbl else "")
         else:
-            return f"Changed {student} · {subject}: '{old}' → '{new}'" + (f" ({week_lbl})" if week_lbl else "")
+            return f"Changed {student} · {subject} / {rubric}: '{old}' → '{new}'" + (f" ({ft_lbl})" if ft_lbl else "")
 
     # ── User ─────────────────────────────────────────────────────────────────
     if m == "User":

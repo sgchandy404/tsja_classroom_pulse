@@ -7,49 +7,35 @@
 {% block header_actions %}
   <div class="flex items-center gap-2">
 
-    <!-- Month + year jump -->
-    <form id="week-jump-form" method="GET" action="{{ url_for('dashboard.index') }}" class="flex items-center gap-1">
+    <!-- Period selector dropdown -->
+    <form method="GET" action="{{ url_for('dashboard.index') }}">
       <input type="hidden" name="grade" value="{{ selected_grade or '' }}" />
+      <input type="hidden" name="year"  value="{{ selected_year }}" />
+      <input type="hidden" name="month" value="{{ selected_month }}" />
       <select
-        name="month"
-        onchange="document.getElementById('week-jump-form').submit()"
+        name="period"
+        onchange="
+          var idx = this.selectedIndex;
+          var opt = this.options[idx];
+          this.form.querySelector('[name=year]').value  = opt.dataset.year;
+          this.form.querySelector('[name=month]').value = opt.dataset.month;
+          this.value = opt.dataset.period;
+          this.form.submit();
+        "
         class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
                focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
       >
-        {% for num, name in months %}
-          <option value="{{ num }}" {% if num == selected_month %}selected{% endif %}>{{ name }}</option>
-        {% endfor %}
-      </select>
-      <select
-        name="jump_year"
-        onchange="document.getElementById('week-jump-form').submit()"
-        class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
-               focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
-      >
-        {% for y in year_range %}
-          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% for ap in available_periods %}
+          <option
+            value="{{ ap.period }}"
+            data-year="{{ ap.year }}"
+            data-month="{{ ap.month }}"
+            data-period="{{ ap.period }}"
+            {% if ap.year == selected_year and ap.month == selected_month and ap.period == selected_period %}selected{% endif %}
+          >{{ ap.label }}</option>
         {% endfor %}
       </select>
     </form>
-
-    <!-- Week prev/next navigation -->
-    <div class="flex items-center rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=prev_week, year=prev_year) }}"
-         class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-        </svg>
-      </a>
-      <span class="px-3 py-1.5 text-xs font-medium text-slate-700 border-x border-slate-200 whitespace-nowrap">
-        {{ week_label }}
-      </span>
-      <a href="{{ url_for('dashboard.index', grade=selected_grade or '', week=next_week, year=next_year) }}"
-         class="flex items-center justify-center h-9 w-9 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-        </svg>
-      </a>
-    </div>
 
   </div>
 {% endblock %}
@@ -60,7 +46,7 @@
 <div class="mb-8 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
   <div class="flex items-stretch divide-x divide-slate-100">
 
-    <!-- Total at-risk -->
+    <!-- Total flagged students -->
     <a href="{{ url_for('at_risk.index') }}"
        class="group flex flex-col justify-between gap-4 px-8 py-6 min-w-[220px] bg-gradient-to-br from-red-50 to-rose-100/60 hover:from-red-100 hover:to-rose-200/60 transition-colors">
       <div class="flex items-center justify-between">
@@ -70,76 +56,54 @@
         </svg>
       </div>
       <div>
-        <p class="text-5xl font-bold tracking-tight text-red-700 leading-none">{{ at_risk_counts.total_students }}</p>
+        <p class="text-5xl font-bold tracking-tight text-red-700 leading-none">{{ at_risk_counts.at_risk_students + at_risk_counts.warning_students }}</p>
         <p class="mt-2 text-xs text-red-400">
           {% if active_term %}{{ active_term.name }} · {% endif %}See full list →
         </p>
       </div>
     </a>
 
-    <!-- Sliding Back -->
-    <a href="{{ url_for('at_risk.index', flag='declining') }}"
+    <!-- At-Risk (coral) -->
+    <a href="{{ url_for('at_risk.index', tier='at_risk') }}"
        class="group flex flex-col justify-between gap-4 px-8 py-6 flex-1 hover:bg-red-50/40 transition-colors">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
             <svg class="h-3.5 w-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
           </span>
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Sliding Back</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">At-Risk</p>
         </div>
         <svg class="h-3.5 w-3.5 text-slate-300 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
         </svg>
       </div>
       <div>
-        <p class="text-4xl font-bold tracking-tight text-red-600 leading-none">{{ at_risk_counts.declining }}</p>
-        <p class="mt-2 text-xs text-slate-400">ranking dropping week on week</p>
+        <p class="text-4xl font-bold tracking-tight leading-none" style="color:#E07060;">{{ at_risk_counts.at_risk_students }}</p>
+        <p class="mt-2 text-xs text-slate-400">3+ rubrics stuck for 3+ fortnights</p>
       </div>
     </a>
 
-    <!-- Not Progressing -->
-    <a href="{{ url_for('at_risk.index', flag='stuck') }}"
+    <!-- Warning (amber) -->
+    <a href="{{ url_for('at_risk.index', tier='warning') }}"
        class="group flex flex-col justify-between gap-4 px-8 py-6 flex-1 hover:bg-amber-50/40 transition-colors">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100">
             <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 0v.008m0-.008c-.621 0-1.125.504-1.125 1.125v3.75m0-3.75c.621 0 1.125.504 1.125 1.125v3.75M12 17.25h.007v.008H12v-.008Z" />
             </svg>
           </span>
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Not Progressing</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Warning</p>
         </div>
         <svg class="h-3.5 w-3.5 text-slate-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
         </svg>
       </div>
       <div>
-        <p class="text-4xl font-bold tracking-tight text-amber-600 leading-none">{{ at_risk_counts.stuck }}</p>
-        <p class="mt-2 text-xs text-slate-400">no improvement for 3+ weeks</p>
-      </div>
-    </a>
-
-    <!-- Bouncing Back -->
-    <a href="{{ url_for('at_risk.index', flag='improving') }}"
-       class="group flex flex-col justify-between gap-4 px-8 py-6 flex-1 hover:bg-green-50/40 transition-colors">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
-            <svg class="h-3.5 w-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
-            </svg>
-          </span>
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Bouncing Back</p>
-        </div>
-        <svg class="h-3.5 w-3.5 text-slate-300 group-hover:text-green-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-        </svg>
-      </div>
-      <div>
-        <p class="text-4xl font-bold tracking-tight text-green-600 leading-none">{{ at_risk_counts.improving }}</p>
-        <p class="mt-2 text-xs text-slate-400">moving up — keep the momentum</p>
+        <p class="text-4xl font-bold tracking-tight text-amber-600 leading-none">{{ at_risk_counts.warning_students }}</p>
+        <p class="mt-2 text-xs text-slate-400">1–2 rubrics stuck for 3+ fortnights</p>
       </div>
     </a>
 
@@ -173,8 +137,9 @@
   {% set ee_me_pct = (ee_me_n / gs.total * 100) | round | int if gs.total > 0 else 0 %}
   {% set border_col = '#3D9E7A' if ee_me_pct > 75 else '#5B8DB8' if ee_me_pct >= 50 else '#E07060' %}
   {% set prev_pct  = prev_grade_pct.get(gs.grade) %}
-  {% set ar_count  = grade_at_risk.get(gs.grade, 0) %}
-  <a href="{{ url_for('dashboard.index', grade=gs.grade, week=selected_week, year=selected_year) }}"
+  {% set ar_count   = grade_at_risk.get(gs.grade, 0) %}
+  {% set warn_count = grade_warning.get(gs.grade, 0) %}
+  <a href="{{ url_for('dashboard.index', grade=gs.grade, year=selected_year, month=selected_month, period=selected_period) }}"
      class="group relative block rounded-xl bg-white shadow-sm transition-all hover:shadow-md overflow-hidden"
      style="border:0.5px solid #e2e8f0;{% if gs.grade == selected_grade %}border-left:4px solid {{ border_col }};{% endif %}">
 
@@ -192,14 +157,14 @@
             {% set delta = ee_me_pct - prev_pct %}
             {% if delta > 0 %}
               <span class="text-xs font-semibold ml-1" style="color:#3D9E7A;">
-                ↑{{ delta }}%<span class="hidden group-hover:inline font-normal" style="color:#3D9E7A;"> vs last week</span>
+                ↑{{ delta }}%<span class="hidden group-hover:inline font-normal" style="color:#3D9E7A;"> vs last fortnight</span>
               </span>
             {% elif delta < 0 %}
               <span class="text-xs font-semibold ml-1" style="color:#E07060;">
-                ↓{{ (delta * -1) }}%<span class="hidden group-hover:inline font-normal" style="color:#E07060;"> vs last week</span>
+                ↓{{ (delta * -1) }}%<span class="hidden group-hover:inline font-normal" style="color:#E07060;"> vs last fortnight</span>
               </span>
             {% else %}
-              <span class="text-xs text-slate-400 ml-1">→<span class="hidden group-hover:inline"> no change vs last week</span></span>
+              <span class="text-xs text-slate-400 ml-1">→<span class="hidden group-hover:inline"> no change vs last fortnight</span></span>
             {% endif %}
           {% endif %}
         {% else %}
@@ -216,6 +181,22 @@
         {% if gs.total == 0 %}<div style="height:16px;background:#f1f5f9;border-radius:6px;"></div>{% endif %}
       </div>
 
+      {% if ar_count or warn_count %}
+      <div class="flex items-center gap-1.5 mb-2">
+        {% if ar_count %}
+        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+              style="background:#fef2f2;color:#E07060;">
+          ⚠ {{ ar_count }} at-risk
+        </span>
+        {% endif %}
+        {% if warn_count %}
+        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+              style="background:#fffbeb;color:#d97706;">
+          {{ warn_count }} warning
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
       <div class="flex justify-between text-xs">
         <span class="font-medium" style="color:#E07060;">
           {{ gs.counts['Working Towards'] }}
@@ -241,7 +222,7 @@
 <!-- Grade filter tabs -->
 <div class="flex items-center gap-1 mb-6 flex-wrap">
   {% for g in grades %}
-    <a href="{{ url_for('dashboard.index', grade=g, week=selected_week, year=selected_year) }}"
+    <a href="{{ url_for('dashboard.index', grade=g, year=selected_year, month=selected_month, period=selected_period) }}"
        class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors
               {% if g == selected_grade %}bg-purple-600 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:border-purple-300 hover:text-purple-700{% endif %}">
       {{ g }}
@@ -257,53 +238,28 @@
   <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-8">
     <div class="px-6 py-4 border-b border-slate-100">
       <h2 class="text-sm font-semibold text-slate-800">{{ selected_grade }} — Subject Breakdown</h2>
-      <p class="text-xs text-slate-400 mt-0.5">{{ week_label }}</p>
+      <p class="text-xs text-slate-400 mt-0.5">{{ current_label }}</p>
     </div>
-    <div id="subject-chart" style="min-height:{{ [breakdown|length * 44 + 60, 160] | max }}px;"></div>
-    <div class="px-6 pb-4 pt-0 flex flex-wrap gap-x-6 gap-y-1 border-t border-slate-50">
-      {% for row in breakdown %}
-      <span class="text-xs text-slate-400">
-        <span class="font-medium text-slate-600">{{ row.subject }}</span>
-        {{ row.total }}/{{ row.student_count }} students
-      </span>
-      {% endfor %}
-    </div>
+    <div id="subject-chart" class="pl-6" style="min-height:{{ [breakdown|length * 52 + 80, 200] | max }}px;"></div>
   </div>
 
-  <!-- Week-on-week movement — clean comparison list -->
-  {% if slope_data %}
+  <!-- Term trend — line chart, all fortnights, per subject -->
+  {% if trend_data %}
   <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-8">
     <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
       <div>
-        <h2 class="text-sm font-semibold text-slate-800">Week-on-Week Movement</h2>
-        <p class="text-xs text-slate-400 mt-0.5">% of students Meeting or Exceeding expectations</p>
+        <h2 class="text-sm font-semibold text-slate-800">Progress Pulse <span class="text-slate-400 font-normal">· {{ selected_grade }}</span></h2>
+        <p class="text-xs text-slate-400 mt-0.5">% of students Meeting or Exceeding Expectations per subject</p>
       </div>
-      <div class="hidden sm:flex items-center gap-6 text-xs text-slate-400">
-        <span>Last week</span>
-        <span>Change</span>
-        <span>This week</span>
-      </div>
+      <select id="trend-scope"
+              class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-sm
+                     focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600">
+        <option value="term">Current Term</option>
+        <option value="all">All Time</option>
+      </select>
     </div>
-    <div class="divide-y divide-slate-50">
-      {% for row in slope_data %}
-      <div class="flex items-center gap-4 px-6 py-3">
-        <span class="w-32 shrink-0 text-sm font-medium text-slate-700 truncate">{{ row.subject }}</span>
-        <span class="w-12 shrink-0 text-right text-sm text-slate-400">{{ row.last_pct }}%</span>
-        <div class="flex-1 flex items-center justify-center">
-          {% if row.delta > 0 %}
-          <span class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"
-                style="background:#f0fdf4; color:#3D9E7A;">↑ +{{ row.delta }}%</span>
-          {% elif row.delta < 0 %}
-          <span class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"
-                style="background:#fff5f5; color:#E07060;">↓ {{ row.delta }}%</span>
-          {% else %}
-          <span class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"
-                style="background:#f8fafc; color:#94a3b8;">— No change</span>
-          {% endif %}
-        </div>
-        <span class="w-12 shrink-0 text-right text-sm font-bold" style="color:{{ row.color }};">{{ row.this_pct }}%</span>
-      </div>
-      {% endfor %}
+    <div class="px-6 pb-4">
+      <div id="trend-chart"></div>
     </div>
   </div>
   {% endif %}
@@ -317,8 +273,8 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
       </svg>
     </div>
-    <h3 class="text-sm font-semibold text-slate-700 mb-1">No entries for {{ selected_grade }} this week</h3>
-    <p class="text-xs text-slate-400 mb-5">Rankings haven't been submitted yet for {{ week_label }}.</p>
+    <h3 class="text-sm font-semibold text-slate-700 mb-1">No entries for {{ selected_grade }} this fortnight</h3>
+    <p class="text-xs text-slate-400 mb-5">Rankings haven't been submitted yet for {{ current_label }}.</p>
     <a href="{{ url_for('entry.form', grade=selected_grade) }}"
        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
       Enter rankings →
@@ -365,10 +321,11 @@ var bd = {{ breakdown_json | safe }};
 new ApexCharts(document.querySelector('#subject-chart'), {
   chart: {
     type: 'bar', stacked: true, stackType: '100%', toolbar: { show: false },
-    height: Math.max(bd.subjects.length * 44 + 60, 160),
+    height: Math.max(bd.subjects.length * 52 + 80, 200),
     animations: { enabled: true, easing: 'easeinout', speed: 600,
                   animateGradually: { enabled: true, delay: 80 } },
     fontFamily: FONT,
+    padding: { bottom: 16 },
   },
   series: [
     { name: 'Working Towards',     data: bd.wt },
@@ -383,12 +340,13 @@ new ApexCharts(document.querySelector('#subject-chart'), {
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
-  yaxis: { labels: { style: { fontSize: '13px', fontWeight: 500, colors: ['#475569'] } } },
+  yaxis: { labels: { maxWidth: 180, style: { fontSize: '12px', fontWeight: 500, colors: ['#475569'] } } },
   tooltip: {
     y: { formatter: function(val, opts) {
       var names = ['wt_n', 'me_n', 'ee_n'];
       var n = bd[names[opts.seriesIndex]][opts.dataPointIndex];
-      return n + ' students (' + Math.round(val) + '%)';
+      var total = bd.student_count[opts.dataPointIndex];
+      return n + ' of ' + total + ' students (' + Math.round(val) + '%)';
     }}
   },
   legend: { position: 'top', horizontalAlign: 'left', fontFamily: FONT, fontSize: '12px',
@@ -397,6 +355,70 @@ new ApexCharts(document.querySelector('#subject-chart'), {
   dataLabels: { enabled: false },
 }).render();
 
+
+{% if trend_data %}
+var td     = {{ trend_data   | tojson }};
+var tlbls  = {{ trend_labels | tojson }};
+var BASE_PALETTE = ['#5B8DB8','#E07060','#3D9E7A','#E8A838','#9B7EC8','#E07890','#60C8A8','#C87860','#8DB85B','#A8B8E0'];
+var PALETTE     = td.map(function(_, i) { return BASE_PALETTE[i % BASE_PALETTE.length]; });
+var allLabels   = tlbls;
+var termLabels  = {{ trend_labels_term | tojson }};
+var MIN_PX_PER_POINT = 90;
+var trendChart  = null;
+
+function shortLabel(l) { return l ? l.replace(/\s*\d{4}$/, '') : l; }
+
+function renderTrend(scope) {
+  var labels  = scope === 'term' ? termLabels : allLabels;
+  var series  = td.map(function(s) {
+    return { name: s.subject, data: scope === 'term' ? s.term_data : s.data };
+  });
+  var nPoints      = labels.length;
+  var legendRows   = Math.ceil(td.length / 3);
+  var chartH       = 300 + legendRows * 22;
+
+  if (trendChart) { trendChart.destroy(); }
+  trendChart = new ApexCharts(document.querySelector('#trend-chart'), {
+    chart: {
+      type: 'line', height: chartH, width: '100%',
+      toolbar: { show: false }, fontFamily: FONT,
+      animations: { enabled: true, easing: 'easeinout', speed: 500 },
+      zoom: { enabled: false },
+    },
+    series: series,
+    colors: PALETTE,
+    stroke: { curve: 'smooth', width: 2.5 },
+    markers: { size: 4, strokeWidth: 0, hover: { size: 7 } },
+    xaxis: {
+      categories: labels,
+      labels: {
+        formatter: function(val) { return val === labels[0] ? '' : shortLabel(val); },
+        rotate: nPoints > 8 ? -45 : 0,
+        rotateAlways: nPoints > 8,
+        style: { fontSize: '11px', colors: '#94a3b8' },
+      },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    yaxis: {
+      min: 0, max: 100, tickAmount: 5,
+      labels: { formatter: function(v) { return v + '%'; }, style: { fontSize: '11px', colors: '#94a3b8' } },
+    },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    tooltip: { y: { formatter: function(v) { return v !== null ? v + '% on track' : 'No data'; } } },
+    legend: {
+      position: 'top', horizontalAlign: 'left', fontFamily: FONT, fontSize: '12px',
+      markers: { radius: 3 }, itemMargin: { horizontal: 10, vertical: 4 },
+    },
+  });
+  trendChart.render();
+}
+
+renderTrend('term');
+document.getElementById('trend-scope').addEventListener('change', function() {
+  renderTrend(this.value);
+});
+{% endif %}
 
 {% endif %}
 </script>
