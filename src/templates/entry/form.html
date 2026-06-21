@@ -145,8 +145,16 @@
 
         <form method="POST" action="{{ url_for('entry.import_rankings') }}" enctype="multipart/form-data">
           <input x-ref="importFile" type="file" name="xlsx_file" accept=".xlsx" class="hidden"
-                 @change="importing = true; $event.target.form.submit()" />
-          <button type="button" @click="$refs.importFile.click()"
+                 @change="$event.target.form.submit()" />
+          <button type="button"
+                  @click="
+                    importing = true;
+                    window.addEventListener('focus', function onFocus() {
+                      window.removeEventListener('focus', onFocus);
+                      setTimeout(() => { if (!$refs.importFile.files.length) importing = false; }, 300);
+                    }, { once: true });
+                    $refs.importFile.click();
+                  "
                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
                          text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
             <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
