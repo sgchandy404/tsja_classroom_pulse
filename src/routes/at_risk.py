@@ -88,6 +88,7 @@ def index():
 
     selected_grade   = request.args.get("grade", "")
     selected_subject = request.args.get("subject", "")
+    selected_flag    = request.args.get("flag", "")
 
     # Guard against accessing a grade out of scope
     if selected_grade and not p.can_view_grade(selected_grade):
@@ -185,6 +186,12 @@ def index():
             ],
         })
 
+    # Apply flag filter from dashboard banner links
+    if selected_flag == "at_risk":
+        rows = [r for r in rows if r["reason"] in ("declining", "stuck")]
+    elif selected_flag in ("declining", "stuck", "improving"):
+        rows = [r for r in rows if r["reason"] == selected_flag]
+
     # Sort: declining → stuck → improving, then grade → name
     reason_order = {"declining": 0, "stuck": 1, "improving": 2}
     rows.sort(key=lambda x: (
@@ -195,14 +202,27 @@ def index():
 
     counts = {r: sum(1 for x in rows if x["reason"] == r) for r in ("declining", "stuck", "improving")}
 
+    # Group rows by student, preserving sort order
+    seen = {}
+    grouped_rows = []
+    for row in rows:
+        sid = row["student"].id
+        if sid not in seen:
+            worst = row["reason"]
+            seen[sid] = {"student": row["student"], "worst": worst, "subjects": []}
+            grouped_rows.append(seen[sid])
+        seen[sid]["subjects"].append(row)
+
     return render_template(
         "at_risk/list.html",
         rows=rows,
+        grouped_rows=grouped_rows,
         counts=counts,
         grades=grades,
         subject_names=subject_names,
         selected_grade=selected_grade,
         selected_subject=selected_subject,
+        selected_flag=selected_flag,
         academic_year=ay,
         terms=terms,
         selected_term=selected_term,

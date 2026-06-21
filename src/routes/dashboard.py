@@ -158,10 +158,14 @@ def index():
     if active_term:
         ar_entries = [e for e in ar_entries if active_term.contains_week(e.iso_week, e.iso_year)]
     ar_grouped = defaultdict(list)
+    sid_to_grade = {}
     for e in ar_entries:
         ar_grouped[(e.student_id, e.subject_id)].append(e)
+        if e.student_id not in sid_to_grade:
+            sid_to_grade[e.student_id] = e.student.grade
     at_risk_counts = {"declining": 0, "stuck": 0, "improving": 0, "total_students": 0}
     at_risk_sids = set()
+    grade_at_risk_sids = defaultdict(set)
     for (s_id, _), es in ar_grouped.items():
         flagged, reason = _detect(es)
         if not flagged:
@@ -169,10 +173,31 @@ def index():
         at_risk_counts[reason] = at_risk_counts.get(reason, 0) + 1
         if reason in ("declining", "stuck"):
             at_risk_sids.add(s_id)
+            grade_at_risk_sids[sid_to_grade.get(s_id, "")].add(s_id)
     at_risk_counts["total_students"] = len(at_risk_sids)
+    grade_at_risk = {g: len(grade_at_risk_sids[g]) for g in grades}
 
     prev_week, prev_year = _adjacent_week(selected_week, selected_year, -1)
     next_week, next_year = _adjacent_week(selected_week, selected_year, +1)
+
+    # Prev week per-grade ME+EE % for trend arrows on grade cards
+    prev_grade_pct = {}
+    for grade in grades:
+        pg_q = (WeeklyEntry.query.join(Student)
+                .filter(Student.grade == grade, Student.is_active == True,
+                        WeeklyEntry.iso_week == prev_week, WeeklyEntry.iso_year == prev_year))
+        pg_sids = p.visible_subject_ids_for_grade(grade)
+        if pg_sids is not None:
+            pg_q = pg_q.filter(WeeklyEntry.subject_id.in_(pg_sids))
+        pg_entries = pg_q.all()
+        pg_counts = defaultdict(int)
+        for e in pg_entries:
+            pg_counts[e.ranking] += 1
+        pg_total = sum(pg_counts.values())
+        if pg_total:
+            prev_grade_pct[grade] = round(
+                (pg_counts["Meets Expectations"] + pg_counts["Exceeds Expectations"]) / pg_total * 100
+            )
 
     # Derive current month from the Monday of the selected week
     try:
@@ -182,6 +207,51 @@ def index():
 
     today = datetime.date.today()
     year_range = list(range(2023, today.year + 2))
+
+    # Restructured breakdown JSON for ApexCharts (percentages + raw counts)
+    breakdown_json = json.dumps({
+        "subjects": [r["subject"] for r in breakdown],
+        "coverage": [f"{r['total']}/{r['student_count']}" for r in breakdown],
+        "wt":   [r["pct"]["Working Towards"]     for r in breakdown],
+        "me":   [r["pct"]["Meets Expectations"]  for r in breakdown],
+        "ee":   [r["pct"]["Exceeds Expectations"] for r in breakdown],
+        "wt_n": [r["counts"]["Working Towards"]     for r in breakdown],
+        "me_n": [r["counts"]["Meets Expectations"]  for r in breakdown],
+        "ee_n": [r["counts"]["Exceeds Expectations"] for r in breakdown],
+    })
+
+    # Slope chart: subject-level ME+EE movement vs prev week
+    slope_data = []
+    slope_json = json.dumps([])
+    if selected_grade and breakdown:
+        slope_rows = []
+        for subject in subjects:
+            prev_e = WeeklyEntry.query.filter_by(
+                subject_id=subject.id, iso_week=prev_week, iso_year=prev_year,
+            ).all()
+            prev_cnt = defaultdict(int)
+            for e in prev_e:
+                prev_cnt[e.ranking] += 1
+            prev_tot = sum(prev_cnt.values())
+            slope_rows.append(
+                round((prev_cnt["Meets Expectations"] + prev_cnt["Exceeds Expectations"]) / prev_tot * 100)
+                if prev_tot else 0
+            )
+        slope_data = []
+        for row, prev_pct in zip(breakdown, slope_rows):
+            this_pct = (
+                round((row["counts"]["Meets Expectations"] + row["counts"]["Exceeds Expectations"]) / row["total"] * 100)
+                if row["total"] else 0
+            )
+            delta = this_pct - prev_pct
+            slope_data.append({
+                "subject":  row["subject"],
+                "last_pct": prev_pct,
+                "this_pct": this_pct,
+                "delta":    delta,
+                "color":    "#3D9E7A" if delta > 0 else "#E07060" if delta < 0 else "#94a3b8",
+            })
+        slope_json = json.dumps(slope_data)  # kept for potential future JS use
 
     return render_template(
         "dashboard/index.html",
@@ -200,12 +270,9 @@ def index():
         year_range=year_range,
         at_risk_counts=at_risk_counts,
         active_term=active_term,
-        breakdown_json=json.dumps([{
-            "subject": r["subject"],
-            "wt": r["counts"]["Working Towards"],
-            "me": r["counts"]["Meets Expectations"],
-            "ee": r["counts"]["Exceeds Expectations"],
-            "total": r["total"],
-            "students": r["student_count"],
-        } for r in breakdown]),
+        grade_at_risk=grade_at_risk,
+        prev_grade_pct=prev_grade_pct,
+        breakdown_json=breakdown_json,
+        slope_data=slope_data,
+        slope_json=slope_json,
     )

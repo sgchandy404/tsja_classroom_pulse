@@ -64,7 +64,7 @@
     <a href="{{ url_for('at_risk.index') }}"
        class="group flex flex-col justify-between gap-4 px-8 py-6 min-w-[220px] bg-gradient-to-br from-red-50 to-rose-100/60 hover:from-red-100 hover:to-rose-200/60 transition-colors">
       <div class="flex items-center justify-between">
-        <p class="text-xs font-semibold uppercase tracking-widest text-red-500">Students at Risk</p>
+        <p class="text-xs font-semibold uppercase tracking-widest text-red-500">Students Needing Attention</p>
         <svg class="h-4 w-4 text-red-400 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
         </svg>
@@ -72,58 +72,76 @@
       <div>
         <p class="text-5xl font-bold tracking-tight text-red-700 leading-none">{{ at_risk_counts.total_students }}</p>
         <p class="mt-2 text-xs text-red-400">
-          {% if active_term %}{{ active_term.name }} · {% endif %}view all →
+          {% if active_term %}{{ active_term.name }} · {% endif %}See full list →
         </p>
       </div>
     </a>
 
-    <!-- Declining -->
-    <div class="flex flex-col justify-between gap-4 px-8 py-6 flex-1">
-      <div class="flex items-center gap-2">
-        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
-          <svg class="h-3.5 w-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" />
-          </svg>
-        </span>
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Declining</p>
+    <!-- Sliding Back -->
+    <a href="{{ url_for('at_risk.index', flag='declining') }}"
+       class="group flex flex-col justify-between gap-4 px-8 py-6 flex-1 hover:bg-red-50/40 transition-colors">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
+            <svg class="h-3.5 w-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" />
+            </svg>
+          </span>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Sliding Back</p>
+        </div>
+        <svg class="h-3.5 w-3.5 text-slate-300 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+        </svg>
       </div>
       <div>
         <p class="text-4xl font-bold tracking-tight text-red-600 leading-none">{{ at_risk_counts.declining }}</p>
-        <p class="mt-2 text-xs text-slate-400">subject–student pairs</p>
+        <p class="mt-2 text-xs text-slate-400">ranking dropping week on week</p>
       </div>
-    </div>
+    </a>
 
-    <!-- Stuck -->
-    <div class="flex flex-col justify-between gap-4 px-8 py-6 flex-1">
-      <div class="flex items-center gap-2">
-        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100">
-          <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-          </svg>
-        </span>
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Stuck</p>
+    <!-- Not Progressing -->
+    <a href="{{ url_for('at_risk.index', flag='stuck') }}"
+       class="group flex flex-col justify-between gap-4 px-8 py-6 flex-1 hover:bg-amber-50/40 transition-colors">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100">
+            <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+            </svg>
+          </span>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Not Progressing</p>
+        </div>
+        <svg class="h-3.5 w-3.5 text-slate-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+        </svg>
       </div>
       <div>
         <p class="text-4xl font-bold tracking-tight text-amber-600 leading-none">{{ at_risk_counts.stuck }}</p>
-        <p class="mt-2 text-xs text-slate-400">3+ weeks at Working Towards</p>
+        <p class="mt-2 text-xs text-slate-400">no improvement for 3+ weeks</p>
       </div>
-    </div>
+    </a>
 
-    <!-- Improving -->
-    <div class="flex flex-col justify-between gap-4 px-8 py-6 flex-1">
-      <div class="flex items-center gap-2">
-        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
-          <svg class="h-3.5 w-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
-          </svg>
-        </span>
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Improving</p>
+    <!-- Bouncing Back -->
+    <a href="{{ url_for('at_risk.index', flag='improving') }}"
+       class="group flex flex-col justify-between gap-4 px-8 py-6 flex-1 hover:bg-green-50/40 transition-colors">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+            <svg class="h-3.5 w-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+            </svg>
+          </span>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Bouncing Back</p>
+        </div>
+        <svg class="h-3.5 w-3.5 text-slate-300 group-hover:text-green-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+        </svg>
       </div>
       <div>
         <p class="text-4xl font-bold tracking-tight text-green-600 leading-none">{{ at_risk_counts.improving }}</p>
-        <p class="mt-2 text-xs text-slate-400">positive trend this term</p>
+        <p class="mt-2 text-xs text-slate-400">moving up — keep the momentum</p>
       </div>
-    </div>
+    </a>
 
   </div>
 </div>
@@ -149,34 +167,73 @@
 {% else %}
 
 <!-- Grade summary cards -->
-<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-10">
   {% for gs in grade_summaries %}
+  {% set ee_me_n   = gs.counts['Meets Expectations'] + gs.counts['Exceeds Expectations'] %}
+  {% set ee_me_pct = (ee_me_n / gs.total * 100) | round | int if gs.total > 0 else 0 %}
+  {% set border_col = '#3D9E7A' if ee_me_pct > 75 else '#5B8DB8' if ee_me_pct >= 50 else '#E07060' %}
+  {% set prev_pct  = prev_grade_pct.get(gs.grade) %}
+  {% set ar_count  = grade_at_risk.get(gs.grade, 0) %}
   <a href="{{ url_for('dashboard.index', grade=gs.grade, week=selected_week, year=selected_year) }}"
-     class="group block rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md
-            {% if gs.grade == selected_grade %}border-purple-300 ring-1 ring-purple-200{% else %}border-slate-200{% endif %}">
-    <div class="flex items-start justify-between mb-3">
-      <p class="text-sm font-semibold text-slate-800">{{ gs.grade }}</p>
-      {% if gs.grade == selected_grade %}
-        <span class="text-xs font-medium text-purple-600 bg-purple-50 rounded-full px-2 py-0.5">Viewing</span>
-      {% endif %}
+     class="group relative block rounded-xl bg-white shadow-sm transition-all hover:shadow-md overflow-hidden"
+     style="border:0.5px solid #e2e8f0;{% if gs.grade == selected_grade %}border-left:4px solid {{ border_col }};{% endif %}">
+
+    <div class="px-4 py-4">
+      <p class="text-sm font-semibold text-slate-800 mb-2 pr-6">{{ gs.grade }}</p>
+
+      <div class="flex items-baseline gap-1.5 mb-3">
+        {% if gs.total > 0 %}
+          <span class="text-2xl font-bold leading-none" style="color:{{ border_col }};">{{ ee_me_pct }}%</span>
+          <span class="text-xs text-slate-400">
+            <span class="group-hover:hidden">on track</span>
+            <span class="hidden group-hover:inline">meeting or exceeding expectations</span>
+          </span>
+          {% if prev_pct is not none %}
+            {% set delta = ee_me_pct - prev_pct %}
+            {% if delta > 0 %}
+              <span class="text-xs font-semibold ml-1" style="color:#3D9E7A;">
+                ↑{{ delta }}%<span class="hidden group-hover:inline font-normal" style="color:#3D9E7A;"> vs last week</span>
+              </span>
+            {% elif delta < 0 %}
+              <span class="text-xs font-semibold ml-1" style="color:#E07060;">
+                ↓{{ (delta * -1) }}%<span class="hidden group-hover:inline font-normal" style="color:#E07060;"> vs last week</span>
+              </span>
+            {% else %}
+              <span class="text-xs text-slate-400 ml-1">→<span class="hidden group-hover:inline"> no change vs last week</span></span>
+            {% endif %}
+          {% endif %}
+        {% else %}
+          <span class="text-sm text-slate-300">No entries</span>
+        {% endif %}
+      </div>
+
+      <div id="strip-{{ loop.index }}"
+           data-wt="{{ gs.counts['Working Towards'] }}"
+           data-me="{{ gs.counts['Meets Expectations'] }}"
+           data-ee="{{ gs.counts['Exceeds Expectations'] }}"
+           data-total="{{ gs.total }}"
+           style="height:16px;margin-bottom:10px;">
+        {% if gs.total == 0 %}<div style="height:16px;background:#f1f5f9;border-radius:6px;"></div>{% endif %}
+      </div>
+
+      <div class="flex justify-between text-xs">
+        <span class="font-medium" style="color:#E07060;">
+          {{ gs.counts['Working Towards'] }}
+          <span class="group-hover:hidden">WT</span>
+          <span class="hidden group-hover:inline">needs support</span>
+        </span>
+        <span class="font-medium text-center" style="color:#5B8DB8;">
+          {{ gs.counts['Meets Expectations'] }}
+          <span class="group-hover:hidden">ME</span>
+          <span class="hidden group-hover:inline">on track</span>
+        </span>
+        <span class="font-medium" style="color:#3D9E7A;">
+          {{ gs.counts['Exceeds Expectations'] }}
+          <span class="group-hover:hidden">EE</span>
+          <span class="hidden group-hover:inline">excelling</span>
+        </span>
+      </div>
     </div>
-    {% if gs.total > 0 %}
-      <div class="flex h-1.5 w-full rounded-full overflow-hidden gap-px mb-3">
-        {% set wt_pct = (gs.counts['Working Towards']    / gs.total * 100) | round | int %}
-        {% set me_pct = (gs.counts['Meets Expectations'] / gs.total * 100) | round | int %}
-        {% set ee_pct = 100 - wt_pct - me_pct %}
-        {% if wt_pct > 0 %}<div class="bg-red-400"   style="width:{{ wt_pct }}%"></div>{% endif %}
-        {% if me_pct > 0 %}<div class="bg-amber-400" style="width:{{ me_pct }}%"></div>{% endif %}
-        {% if ee_pct > 0 %}<div class="bg-green-400" style="width:{{ ee_pct }}%"></div>{% endif %}
-      </div>
-      <div class="flex gap-3 text-xs text-slate-500">
-        <span><span class="font-medium text-red-600">{{ gs.counts['Working Towards'] }}</span> WT</span>
-        <span><span class="font-medium text-amber-600">{{ gs.counts['Meets Expectations'] }}</span> ME</span>
-        <span><span class="font-medium text-green-600">{{ gs.counts['Exceeds Expectations'] }}</span> EE</span>
-      </div>
-    {% else %}
-      <p class="text-xs text-slate-400">No entries this week.</p>
-    {% endif %}
   </a>
   {% endfor %}
 </div>
@@ -196,32 +253,60 @@
 {% if selected_grade %}
   {% if breakdown %}
 
-  <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-800">{{ selected_grade }} — Subject Breakdown</h2>
-        <p class="text-xs text-slate-400 mt-0.5">{{ week_label }}</p>
-      </div>
-      <!-- Legend -->
-      <div class="hidden sm:flex items-center gap-4 text-xs text-slate-500">
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-red-400 inline-block"></span>Working Towards</span>
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-amber-400 inline-block"></span>Meets Expectations</span>
-        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-green-400 inline-block"></span>Exceeds Expectations</span>
-      </div>
+  <!-- Subject breakdown — ApexCharts stacked horizontal bar -->
+  <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h2 class="text-sm font-semibold text-slate-800">{{ selected_grade }} — Subject Breakdown</h2>
+      <p class="text-xs text-slate-400 mt-0.5">{{ week_label }}</p>
     </div>
-    <div class="px-6 py-6" style="height: {{ [breakdown|length * 60 + 40, 200] | max }}px; min-height: 200px;">
-      <canvas id="breakdown-chart"></canvas>
-    </div>
-    <!-- Coverage footnote -->
-    <div class="px-6 pb-4 flex flex-wrap gap-x-6 gap-y-1">
+    <div id="subject-chart" style="min-height:{{ [breakdown|length * 44 + 60, 160] | max }}px;"></div>
+    <div class="px-6 pb-4 pt-0 flex flex-wrap gap-x-6 gap-y-1 border-t border-slate-50">
       {% for row in breakdown %}
-        <span class="text-xs text-slate-400">
-          <span class="font-medium text-slate-600">{{ row.subject }}</span>
-          {{ row.total }}/{{ row.student_count }} students entered
-        </span>
+      <span class="text-xs text-slate-400">
+        <span class="font-medium text-slate-600">{{ row.subject }}</span>
+        {{ row.total }}/{{ row.student_count }} students
+      </span>
       {% endfor %}
     </div>
   </div>
+
+  <!-- Week-on-week movement — clean comparison list -->
+  {% if slope_data %}
+  <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-800">Week-on-Week Movement</h2>
+        <p class="text-xs text-slate-400 mt-0.5">% of students Meeting or Exceeding expectations</p>
+      </div>
+      <div class="hidden sm:flex items-center gap-6 text-xs text-slate-400">
+        <span>Last week</span>
+        <span>Change</span>
+        <span>This week</span>
+      </div>
+    </div>
+    <div class="divide-y divide-slate-50">
+      {% for row in slope_data %}
+      <div class="flex items-center gap-4 px-6 py-3">
+        <span class="w-32 shrink-0 text-sm font-medium text-slate-700 truncate">{{ row.subject }}</span>
+        <span class="w-12 shrink-0 text-right text-sm text-slate-400">{{ row.last_pct }}%</span>
+        <div class="flex-1 flex items-center justify-center">
+          {% if row.delta > 0 %}
+          <span class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"
+                style="background:#f0fdf4; color:#3D9E7A;">↑ +{{ row.delta }}%</span>
+          {% elif row.delta < 0 %}
+          <span class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"
+                style="background:#fff5f5; color:#E07060;">↓ {{ row.delta }}%</span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"
+                style="background:#f8fafc; color:#94a3b8;">— No change</span>
+          {% endif %}
+        </div>
+        <span class="w-12 shrink-0 text-right text-sm font-bold" style="color:{{ row.color }};">{{ row.this_pct }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   {% else %}
 
@@ -252,75 +337,67 @@
 {% endblock %}
 
 {% block scripts %}
-{% if breakdown %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  const raw = {{ breakdown_json | safe }};
-  const labels = raw.map(d => d.subject);
+const CP = { wt: '#E07060', me: '#5B8DB8', ee: '#3D9E7A' };
+const FONT = '"DM Sans", ui-sans-serif, system-ui, sans-serif';
 
-  new Chart(document.getElementById('breakdown-chart'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Working Towards',
-          data: raw.map(d => d.wt),
-          backgroundColor: '#fca5a5',
-          hoverBackgroundColor: '#f87171',
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-        {
-          label: 'Meets Expectations',
-          data: raw.map(d => d.me),
-          backgroundColor: '#fcd34d',
-          hoverBackgroundColor: '#fbbf24',
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-        {
-          label: 'Exceeds Expectations',
-          data: raw.map(d => d.ee),
-          backgroundColor: '#86efac',
-          hoverBackgroundColor: '#4ade80',
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-      ]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          mode: 'index',
-          callbacks: {
-            footer: (items) => {
-              const idx = items[0].dataIndex;
-              return `Coverage: ${raw[idx].total}/${raw[idx].students} students`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          stacked: true,
-          grid: { color: '#f1f5f9' },
-          ticks: { precision: 0, color: '#94a3b8', font: { size: 11 } },
-          border: { display: false },
-        },
-        y: {
-          stacked: true,
-          grid: { display: false },
-          ticks: { color: '#475569', font: { size: 12, weight: '500' } },
-          border: { display: false },
-        }
-      }
-    }
-  });
-</script>
+// Grade card sparkline strips
+document.querySelectorAll('[id^="strip-"]').forEach(function(el) {
+  var total = +el.dataset.total;
+  if (!total) return;
+  var wt = Math.round(+el.dataset.wt / total * 100);
+  var me = Math.round(+el.dataset.me / total * 100);
+  var ee = 100 - wt - me;
+  new ApexCharts(el, {
+    chart: { type: 'bar', height: 16, stacked: true, stackType: '100%',
+             sparkline: { enabled: true }, animations: { enabled: true, speed: 500 } },
+    series: [{ data: [wt] }, { data: [me] }, { data: [ee] }],
+    colors: [CP.wt, CP.me, CP.ee],
+    plotOptions: { bar: { horizontal: true, borderRadius: 0 } },
+    tooltip: { enabled: false },
+    legend: { show: false },
+  }).render();
+});
+
+{% if breakdown %}
+// Subject breakdown chart
+var bd = {{ breakdown_json | safe }};
+new ApexCharts(document.querySelector('#subject-chart'), {
+  chart: {
+    type: 'bar', stacked: true, stackType: '100%', toolbar: { show: false },
+    height: Math.max(bd.subjects.length * 44 + 60, 160),
+    animations: { enabled: true, easing: 'easeinout', speed: 600,
+                  animateGradually: { enabled: true, delay: 80 } },
+    fontFamily: FONT,
+  },
+  series: [
+    { name: 'Working Towards',     data: bd.wt },
+    { name: 'Meets Expectations',  data: bd.me },
+    { name: 'Exceeds Expectations',data: bd.ee },
+  ],
+  colors: [CP.wt, CP.me, CP.ee],
+  plotOptions: { bar: { horizontal: true, barHeight: '45%', borderRadius: 5, borderRadiusApplication: 'end', borderRadiusWhenStacked: 'last' } },
+  xaxis: {
+    categories: bd.subjects,
+    labels: { show: false },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+  },
+  yaxis: { labels: { style: { fontSize: '13px', fontWeight: 500, colors: ['#475569'] } } },
+  tooltip: {
+    y: { formatter: function(val, opts) {
+      var names = ['wt_n', 'me_n', 'ee_n'];
+      var n = bd[names[opts.seriesIndex]][opts.dataPointIndex];
+      return n + ' students (' + Math.round(val) + '%)';
+    }}
+  },
+  legend: { position: 'top', horizontalAlign: 'left', fontFamily: FONT, fontSize: '12px',
+            markers: { radius: 3 } },
+  grid: { show: false },
+  dataLabels: { enabled: false },
+}).render();
+
+
 {% endif %}
+</script>
 {% endblock %}

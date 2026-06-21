@@ -52,7 +52,30 @@
 
 {% block content %}
 
-<!-- Summary strip -->
+<div x-data="{ q: '' }">
+
+<!-- Active flag banner -->
+{% if selected_flag %}
+<div class="flex items-center justify-between rounded-xl px-4 py-3 mb-5 text-sm
+            {% if selected_flag == 'declining' %}bg-red-50 text-red-700 border border-red-100
+            {% elif selected_flag == 'stuck' %}bg-amber-50 text-amber-700 border border-amber-100
+            {% elif selected_flag == 'improving' %}bg-green-50 text-green-700 border border-green-100
+            {% else %}bg-slate-50 text-slate-700 border border-slate-100{% endif %}">
+  <span>
+    Showing:
+    {% if selected_flag == 'declining' %}<strong>Sliding Back</strong> — students whose ranking is dropping week on week
+    {% elif selected_flag == 'stuck' %}<strong>Not Progressing</strong> — students with no improvement for 3+ weeks
+    {% elif selected_flag == 'improving' %}<strong>Bouncing Back</strong> — students with an upward trend
+    {% elif selected_flag == 'at_risk' %}<strong>All at-risk</strong> — declining and stuck students combined
+    {% endif %}
+  </span>
+  <a href="{{ url_for('at_risk.index') }}" class="ml-4 text-xs font-medium underline underline-offset-2 opacity-60 hover:opacity-100">
+    Clear filter
+  </a>
+</div>
+{% endif %}
+
+<!-- Summary strip + search -->
 <div class="flex flex-wrap items-center gap-6 mb-6">
   <div class="flex items-center gap-2">
     <span class="inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
@@ -75,90 +98,111 @@
   {% if not rows %}
     <span class="text-sm text-slate-400 ml-2">Nothing to flag{% if selected_grade or selected_subject %} for this filter{% endif %}. Students need at least 3 weeks of data.</span>
   {% endif %}
+  <div class="ml-auto relative w-56">
+    <svg class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+         fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.636 5.636a7.5 7.5 0 0 0 10.607 10.607Z" />
+    </svg>
+    <input
+      type="text"
+      x-model="q"
+      placeholder="Search students…"
+      class="w-full rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-8 text-sm text-slate-700 shadow-sm
+             placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+    />
+    <button x-show="q" x-cloak @click="q = ''"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
 </div>
 
 {% if rows %}
-<div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-  <table class="min-w-full text-sm">
-    <thead>
-      <tr class="bg-slate-50 border-b border-slate-100">
-        <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Student</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Current Ranking</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Last 3 Weeks</th>
-        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flag</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-      {% for item in rows %}
-      <tr class="hover:bg-slate-50 transition-colors">
+<div class="space-y-4">
+  {% for grp in grouped_rows %}
+  <div x-show="!q || '{{ grp.student.name | lower }}'.includes(q.toLowerCase())"
+       class="rounded-xl border bg-white shadow-sm overflow-hidden
+              {% if grp.worst == 'declining' %}border-red-100
+              {% elif grp.worst == 'stuck' %}border-amber-100
+              {% else %}border-green-100{% endif %}">
 
-        <td class="px-6 py-4">
-          <a href="{{ url_for('students.detail', student_id=item.student.id) }}"
-             class="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
-            {{ item.student.name }}
+    <!-- Student header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+      <div class="flex items-center gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold
+                    {% if grp.worst == 'declining' %}bg-red-50 text-red-600
+                    {% elif grp.worst == 'stuck' %}bg-amber-50 text-amber-600
+                    {% else %}bg-green-50 text-green-600{% endif %}">
+          {{ grp.student.name[0].upper() }}
+        </div>
+        <div>
+          <a href="{{ url_for('students.detail', student_id=grp.student.id) }}"
+             class="text-sm font-semibold text-slate-800 hover:text-indigo-600 transition-colors">
+            {{ grp.student.name }}
           </a>
-        </td>
+          <p class="text-xs text-slate-400">{{ grp.student.grade }}</p>
+        </div>
+      </div>
+      <span class="text-xs text-slate-400">{{ grp.subjects | length }} subject{{ 's' if grp.subjects | length > 1 }}</span>
+    </div>
 
+    <!-- Subject rows -->
+    {% for item in grp.subjects %}
+    <div class="flex items-center gap-4 px-5 py-3 {% if not loop.last %}border-b border-slate-50{% endif %}">
 
-        <td class="px-4 py-4 text-slate-600 whitespace-nowrap">{{ item.student.grade }}</td>
-        <td class="px-4 py-4 text-slate-600 whitespace-nowrap">{{ item.subject.name }}</td>
+      <!-- Subject name -->
+      <span class="w-32 shrink-0 text-sm text-slate-700 font-medium">{{ item.subject.name }}</span>
 
-        <td class="px-4 py-4">{{ ranking_badge(item.last_ranking) }}</td>
-
-        <!-- Last 3 weeks dot timeline -->
-        <td class="px-4 py-4">
-          <div class="flex items-center gap-1.5">
-            {% for w in item.weeks_data %}
-              <div class="flex flex-col items-center gap-1">
-                <span class="text-[10px] text-slate-400 leading-none">Wk {{ w.week }}</span>
-                <span class="inline-block h-2 w-2 rounded-full
-                  {% if w.ranking == 'Working Towards' %}bg-red-400
-                  {% elif w.ranking == 'Meets Expectations' %}bg-amber-400
-                  {% else %}bg-green-400{% endif %}">
-                </span>
-              </div>
-              {% if not loop.last %}
-                <svg class="h-3 w-3 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                </svg>
-              {% endif %}
-            {% endfor %}
+      <!-- Last 3 weeks dots -->
+      <div class="flex items-center gap-1.5 flex-1">
+        {% for w in item.weeks_data %}
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-[10px] text-slate-400 leading-none">Wk {{ w.week }}</span>
+            <span class="inline-block h-2.5 w-2.5 rounded-full
+              {% if w.ranking == 'Working Towards' %}bg-red-400
+              {% elif w.ranking == 'Meets Expectations' %}bg-amber-400
+              {% else %}bg-green-400{% endif %}">
+            </span>
           </div>
-        </td>
-
-        <!-- Flag badge -->
-        <td class="px-4 py-4">
-          {% if item.reason == 'declining' %}
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
-              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" />
-              </svg>
-              Declining
-            </span>
-          {% elif item.reason == 'stuck' %}
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
-              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
-              </svg>
-              Stuck
-            </span>
-          {% elif item.reason == 'improving' %}
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">
-              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
-              </svg>
-              Improving
-            </span>
+          {% if not loop.last %}
+          <svg class="h-3 w-3 text-slate-200 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          </svg>
           {% endif %}
-        </td>
+        {% endfor %}
+      </div>
 
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      <!-- Current ranking badge -->
+      <div class="shrink-0">{{ ranking_badge(item.last_ranking) }}</div>
+
+      <!-- Flag badge -->
+      <div class="shrink-0 w-36 text-right">
+        {% if item.reason == 'declining' %}
+          <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" /></svg>
+            Sliding Back
+          </span>
+        {% elif item.reason == 'stuck' %}
+          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" /></svg>
+            Not Progressing
+          </span>
+        {% elif item.reason == 'improving' %}
+          <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /></svg>
+            Bouncing Back
+          </span>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
 </div>
+</div><!-- end x-data search wrapper -->
 
 {% else %}
   {% if counts.declining == 0 and counts.stuck == 0 and counts.improving == 0 %}
