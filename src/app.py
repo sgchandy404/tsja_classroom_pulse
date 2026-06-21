@@ -545,6 +545,10 @@ def _seed_demo() -> None:  # noqa: C901
     )
 
 
+# Module-level app instance — required by Gunicorn (src.app:app).
+# When run directly (python app.py) __name__ == "__main__" is also true,
+# so app.run() below picks up the same object.
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
     app.run(debug=True)
