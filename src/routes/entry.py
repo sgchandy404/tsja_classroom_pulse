@@ -59,9 +59,9 @@ def form():
         grades=grades,
         selected_grade=selected_grade,
         rankings=RANKINGS,
-        cur_year=cur_year,
-        cur_month=cur_month,
-        cur_period=cur_period,
+        current_year=cur_year,
+        current_month=cur_month,
+        current_period=cur_period,
         fortnight_options=_fortnight_options(cur_year, cur_month, cur_period),
     )
 
