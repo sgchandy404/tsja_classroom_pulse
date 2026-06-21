@@ -222,6 +222,66 @@ feature/<name>  →  dev  →  staging  →  prod
 
 ---
 
+## Deployment — DigitalOcean Droplet
+
+### Server Setup
+
+1. **Create Droplet**
+   - Provider: DigitalOcean
+   - Region: Bangalore (BLR1)
+   - Image: Ubuntu 24.04 LTS
+   - Size: Basic, Regular, $6/month (1 GiB RAM / 1 vCPU / 25 GiB SSD)
+   - Auth: SSH Key
+
+2. **Access**
+   - Preferred: `ssh root@<droplet-ip>` - Currently not setup
+   - Fallback: DigitalOcean console → Droplet → **Console** tab (browser-based terminal, useful if local SSH is blocked by your network/ISP)
+
+3. **Firewall (UFW)**
+
+```bash
+ufw allow OpenSSH
+ufw allow 80
+ufw allow 443
+ufw enable
+```
+
+4. **Install Docker**
+
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+```
+
+5. **Deploy the app**
+
+```bash
+git clone <repo-url>
+cd classroom-pulse
+docker compose up -d --build
+```
+
+6. **Access the app**
+   - `http://<droplet-ip>` (no domain/SSL yet — fine for internal testing)
+
+---
+
+### Pending — before real student data goes live
+
+- [ ] Create non-root `deploy` user, disable root SSH login
+- [ ] SSH key-only auth (disable password login)
+- [ ] Point a domain, set up SSL via Certbot (`certbot --nginx -d yourdomain.com`)
+- [ ] DigitalOcean automated backups
+- [ ] Resolve local SSH connectivity issue (currently times out on home network — likely ISP/router blocking outbound port 22; browser console works as a workaround)
+
+---
+
+### Notes
+- DigitalOcean's $5 signup credit lasts 90 days — not enough to cover this tier long-term, budget for ~$12/month from month one
+- Region note: if Bangalore capacity/plan issues arise, Droplet can be migrated to Singapore via Snapshot → new Droplet → repoint DNS
+
+---
+
 ## Contributing
 
 This is a personal project built for a specific school context and is not currently open to external contributions. Feel free to fork it and adapt it for your own use under the terms of the [MIT License](LICENSE).
