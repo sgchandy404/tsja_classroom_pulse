@@ -6,37 +6,37 @@
 {% block content %}
 <div x-data="entryForm()" x-init="init('{{ selected_grade | e }}')">
 
-  <!-- Step 1 + 2 + 3: Grade / Subject / Fortnight selectors -->
-  <div class="flex flex-wrap items-end gap-4 mb-6">
+  <!-- Controls bar -->
+  <div class="flex flex-wrap items-end gap-4 mb-6 rounded-xl border border-slate-200 bg-white shadow-sm px-5 py-4">
 
     <!-- Grade -->
     <div>
-      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Grade</label>
+      <label class="block text-xs text-slate-400 mb-1">Grade</label>
       <select
         x-model="grade"
         @change="onGradeChange()"
-        class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800
                focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
       >
-        <option value="">— select grade —</option>
+        <option value="">—</option>
         {% for g in grades %}
           <option value="{{ g }}">{{ g }}</option>
         {% endfor %}
       </select>
     </div>
 
-    <!-- Subject (populated after grade chosen) -->
+    <!-- Subject -->
     <div>
-      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Subject</label>
+      <label class="block text-xs text-slate-400 mb-1">Subject</label>
       <select
         x-model="subjectId"
         @change="onSubjectChange()"
         :disabled="subjects.length === 0"
-        class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800
                focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600
                disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        <option value="">Subject</option>
+        <option value="">—</option>
         <template x-for="s in subjects" :key="s.id">
           <option :value="s.id" x-text="s.name"></option>
         </template>
@@ -45,11 +45,11 @@
 
     <!-- Fortnight -->
     <div>
-      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Fortnight</label>
+      <label class="block text-xs text-slate-400 mb-1">Fortnight</label>
       <select
         @change="onFortnightChange($event)"
         :disabled="!subjectId"
-        class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800
                focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600
                disabled:opacity-40 disabled:cursor-not-allowed"
       >
