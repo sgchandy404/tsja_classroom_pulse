@@ -79,6 +79,25 @@ def students():
                     for s in rows])
 
 
+@entry_bp.route("/existing")
+@login_required
+def existing():
+    """Return saved rankings for a subject + fortnight so the form can pre-fill."""
+    subject_id = request.args.get("subject_id", type=int)
+    ft_year    = request.args.get("ft_year",    type=int)
+    ft_month   = request.args.get("ft_month",   type=int)
+    ft_period  = request.args.get("ft_period",  type=int)
+    if not all([subject_id, ft_year, ft_month, ft_period]):
+        return jsonify({})
+    entries = FortnightEntry.query.filter_by(
+        subject_id=subject_id,
+        ft_year=ft_year, ft_month=ft_month, ft_period=ft_period,
+    ).all()
+    # key: "studentId_rubricId" → ranking string
+    data = {f"{e.student_id}_{e.rubric_id}": e.ranking for e in entries}
+    return jsonify(data)
+
+
 @entry_bp.route("/subjects")
 @login_required
 def subjects():

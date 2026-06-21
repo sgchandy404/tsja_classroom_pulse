@@ -4,20 +4,17 @@
 {% block page_title %}Fortnight Entry{% endblock %}
 
 {% block content %}
-<div
-  x-data="entryForm()"
-  x-init="init('{{ selected_grade | e }}')"
->
+<div x-data="entryForm()" x-init="init('{{ selected_grade | e }}')">
 
-  <!-- Filters row -->
+  <!-- Step 1 + 2 + 3: Grade / Subject / Fortnight selectors -->
   <div class="flex flex-wrap items-end gap-4 mb-6">
 
-    <!-- Grade selector -->
+    <!-- Grade -->
     <div>
       <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Grade</label>
       <select
         x-model="grade"
-        @change="loadGradeData()"
+        @change="onGradeChange()"
         class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
                focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
       >
@@ -28,32 +25,47 @@
       </select>
     </div>
 
-    <!-- Fortnight period selector -->
+    <!-- Subject (populated after grade chosen) -->
+    <div>
+      <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Subject</label>
+      <select
+        x-model="subjectId"
+        @change="onSubjectChange()"
+        :disabled="subjects.length === 0"
+        class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+               focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600
+               disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <option value="">— select subject —</option>
+        <template x-for="s in subjects" :key="s.id">
+          <option :value="s.id" x-text="s.name"></option>
+        </template>
+      </select>
+    </div>
+
+    <!-- Fortnight -->
     <div>
       <label class="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Fortnight</label>
       <select
-        @change="
-          const parts = $event.target.value.split(':');
-          ftYear  = parseInt(parts[0]);
-          ftMonth = parseInt(parts[1]);
-          ftPeriod = parseInt(parts[2]);
-        "
+        @change="onFortnightChange($event)"
+        :disabled="!subjectId"
         class="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
-               focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+               focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600
+               disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {% for opt in fortnight_options %}
           <option
             value="{{ opt.year }}:{{ opt.month }}:{{ opt.period }}"
             {% if opt.year == current_year and opt.month == current_month and opt.period == current_period %}selected{% endif %}
-          >{{ opt.label }}{% if opt.is_current %} (current){% endif %}</option>
+          >{{ opt.label }}</option>
         {% endfor %}
       </select>
     </div>
 
-    <!-- Submit -->
+    <!-- Save button -->
     <button
       @click="submitForm()"
-      :disabled="!grade || students.length === 0"
+      :disabled="!subjectId || students.length === 0"
       class="ml-auto rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm
              hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
     >
@@ -61,7 +73,7 @@
     </button>
   </div>
 
-  <!-- Loading state -->
+  <!-- Loading -->
   <div x-show="loading" class="flex items-center gap-2 text-sm text-slate-400 py-12 justify-center">
     <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -70,79 +82,98 @@
     Loading…
   </div>
 
-  <!-- Empty states -->
+  <!-- Empty: no grade selected -->
   <div
     x-show="!loading && !grade"
-    class="flex items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200"
+    class="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200 gap-2"
   >
-    <p class="text-sm text-slate-400">Select a grade above to begin entering rankings.</p>
+    <p class="text-sm text-slate-400">Select a grade to begin.</p>
   </div>
 
+  <!-- Empty: grade selected but no subject yet -->
   <div
-    x-show="!loading && grade && students.length === 0"
-    class="flex items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200"
+    x-show="!loading && grade && !subjectId"
+    class="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200 gap-2"
   >
-    <p class="text-sm text-slate-400">No students found for this grade.</p>
+    <p class="text-sm text-slate-400">Now pick a subject.</p>
   </div>
 
-  <!-- Entry table -->
-  <div x-show="!loading && students.length > 0 && columns.length > 0" class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-    <table class="min-w-full text-sm border-collapse">
-      <thead>
-        <!-- Subject group header row -->
-        <tr class="border-b border-slate-200 bg-slate-50">
-          <th class="sticky left-0 z-10 bg-slate-50 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap" colspan="2"></th>
-          <template x-for="sg in subjectGroups" :key="sg.subjectId">
-            <th
-              :colspan="sg.rubrics.length"
-              class="px-4 py-2.5 text-left text-xs font-semibold text-slate-700 border-l border-slate-100 whitespace-nowrap"
-              x-text="sg.subjectName"
-            ></th>
-          </template>
-        </tr>
-        <!-- Rubric sub-header row -->
-        <tr class="border-b border-slate-100 bg-slate-50/70">
-          <th class="sticky left-0 z-10 bg-slate-50 px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Roll</th>
-          <th class="sticky left-16 z-10 bg-slate-50 px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Student</th>
-          <template x-for="col in columns" :key="col.rubricId">
-            <th class="px-4 py-2.5 text-left border-l border-slate-100 whitespace-nowrap">
-              <span class="text-xs font-medium text-slate-500" x-text="col.rubricName"></span>
-              <span x-show="!col.isRequired" class="ml-1 text-[10px] text-slate-400 font-normal">(optional)</span>
-            </th>
-          </template>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        <template x-for="student in students" :key="student.id">
-          <tr class="hover:bg-slate-50 transition-colors">
-            <td class="sticky left-0 bg-white px-5 py-3 font-mono text-xs text-slate-400 whitespace-nowrap"
-                x-text="student.roll_number"></td>
-            <td class="sticky left-16 bg-white px-5 py-3 font-medium text-slate-800 whitespace-nowrap"
-                x-text="student.name"></td>
-            <template x-for="col in columns" :key="col.rubricId">
-              <td class="px-4 py-2.5 border-l border-slate-50">
-                <select
-                  :name="`ranking_${student.id}_${col.rubricId}`"
-                  x-model="rankings[`${student.id}_${col.rubricId}`]"
-                  class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700
-                         focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
-                  :class="{
-                    'border-red-200 bg-red-50 text-red-700':     rankings[`${student.id}_${col.rubricId}`] === 'Working Towards',
-                    'border-blue-200 bg-blue-50 text-blue-700':  rankings[`${student.id}_${col.rubricId}`] === 'Meets Expectations',
-                    'border-green-200 bg-green-50 text-green-700': rankings[`${student.id}_${col.rubricId}`] === 'Exceeds Expectations',
-                  }"
-                >
-                  <option value="" x-text="col.isRequired ? '— required —' : '— optional —'"></option>
-                  <option value="Working Towards">Working Towards</option>
-                  <option value="Meets Expectations">Meets Expectations</option>
-                  <option value="Exceeds Expectations">Exceeds Expectations</option>
-                </select>
-              </td>
+  <!-- Empty: subject selected but no students -->
+  <div
+    x-show="!loading && subjectId && students.length === 0"
+    class="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200 gap-2"
+  >
+    <p class="text-sm text-slate-400">No active students found for this grade.</p>
+  </div>
+
+  <!-- Entry table: students × rubrics for the selected subject -->
+  <div x-show="!loading && subjectId && students.length > 0 && rubrics.length > 0"
+       class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+
+    <!-- Subject header bar -->
+    <div class="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+      <div>
+        <span class="text-sm font-semibold text-slate-800" x-text="subjectName"></span>
+        <span class="ml-2 text-xs text-slate-400" x-text="rubrics.length + ' rubric' + (rubrics.length !== 1 ? 's' : '')"></span>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-slate-400">
+        <span x-text="students.length + ' students'"></span>
+        <span x-show="savedCount > 0"
+              class="inline-flex items-center gap-1 text-green-600 font-medium">
+          <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+          </svg>
+          <span x-text="savedCount + ' pre-filled from saved data'"></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b border-slate-100 bg-slate-50/60">
+            <th class="sticky left-0 z-10 bg-slate-50 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Roll</th>
+            <th class="sticky left-[4.5rem] z-10 bg-slate-50 px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Student</th>
+            <template x-for="r in rubrics" :key="r.id">
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-600 border-l border-slate-100 min-w-[160px]">
+                <span x-text="r.name"></span>
+                <span x-show="!r.is_required" class="ml-1 text-[10px] font-normal text-slate-400">(optional)</span>
+              </th>
             </template>
           </tr>
-        </template>
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <template x-for="student in students" :key="student.id">
+            <tr class="hover:bg-slate-50/60 transition-colors">
+              <td class="sticky left-0 bg-white px-5 py-2.5 font-mono text-xs text-slate-400 whitespace-nowrap"
+                  x-text="student.roll_number"></td>
+              <td class="sticky left-[4.5rem] bg-white px-5 py-2.5 font-medium text-slate-800 whitespace-nowrap"
+                  x-text="student.name"></td>
+              <template x-for="r in rubrics" :key="r.id">
+                <td class="px-3 py-2 border-l border-slate-50">
+                  <select
+                    x-model="rankings[`${student.id}_${r.id}`]"
+                    class="w-full rounded-lg border px-2.5 py-1.5 text-xs
+                           focus:outline-none focus:ring-1 focus:ring-brand-600"
+                    :class="{
+                      'border-red-200 bg-red-50 text-red-700':       rankings[`${student.id}_${r.id}`] === 'Working Towards',
+                      'border-blue-200 bg-blue-50 text-blue-700':    rankings[`${student.id}_${r.id}`] === 'Meets Expectations',
+                      'border-green-200 bg-green-50 text-green-700': rankings[`${student.id}_${r.id}`] === 'Exceeds Expectations',
+                      'border-slate-200 bg-white text-slate-500':    !rankings[`${student.id}_${r.id}`],
+                    }"
+                  >
+                    <option value="" x-text="r.is_required ? '— required —' : '— optional —'"></option>
+                    <option value="Working Towards">Working Towards</option>
+                    <option value="Meets Expectations">Meets Expectations</option>
+                    <option value="Exceeds Expectations">Exceeds Expectations</option>
+                  </select>
+                </td>
+              </template>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Hidden POST form -->
@@ -151,11 +182,11 @@
     <input type="hidden" name="ft_month"  :value="ftMonth" />
     <input type="hidden" name="ft_period" :value="ftPeriod" />
     <template x-for="student in students" :key="student.id">
-      <template x-for="col in columns" :key="col.rubricId">
+      <template x-for="r in rubrics" :key="r.id">
         <input
           type="hidden"
-          :name="`ranking_${student.id}_${col.rubricId}`"
-          :value="rankings[`${student.id}_${col.rubricId}`] || ''"
+          :name="`ranking_${student.id}_${r.id}`"
+          :value="rankings[`${student.id}_${r.id}`] || ''"
         />
       </template>
     </template>
@@ -168,46 +199,82 @@
 <script>
 function entryForm() {
   return {
-    grade: '',
-    ftYear:   {{ current_year }},
-    ftMonth:  {{ current_month }},
-    ftPeriod: {{ current_period }},
-    students: [],
-    subjectGroups: [],  // [{subjectId, subjectName, rubrics: [{rubricId, rubricName, isRequired}]}]
-    columns: [],        // flat list of rubric columns for iteration
-    rankings: {},
-    loading: false,
+    grade:       '',
+    subjectId:   '',
+    subjectName: '',
+    ftYear:      {{ current_year }},
+    ftMonth:     {{ current_month }},
+    ftPeriod:    {{ current_period }},
+    students:    [],
+    subjects:    [],
+    rubrics:     [],
+    rankings:    {},
+    savedCount:  0,
+    loading:     false,
 
-    init(selectedGrade) {
+    async init(selectedGrade) {
       if (selectedGrade) {
         this.grade = selectedGrade;
-        this.loadGradeData();
+        await this.loadSubjects();
       }
     },
 
-    async loadGradeData() {
-      if (!this.grade) { this.students = []; this.subjectGroups = []; this.columns = []; return; }
+    async onGradeChange() {
+      this.subjectId   = '';
+      this.subjectName = '';
+      this.subjects    = [];
+      this.students    = [];
+      this.rubrics     = [];
+      this.rankings    = {};
+      this.savedCount  = 0;
+      if (this.grade) await this.loadSubjects();
+    },
+
+    async loadSubjects() {
       this.loading = true;
-      const [sRes, subRes] = await Promise.all([
+      const res = await fetch(`/entry/subjects?grade=${encodeURIComponent(this.grade)}`);
+      this.subjects = await res.json();
+      this.loading = false;
+    },
+
+    async onSubjectChange() {
+      this.rankings   = {};
+      this.savedCount = 0;
+      const subj = this.subjects.find(s => s.id == this.subjectId);
+      this.subjectName = subj ? subj.name : '';
+      this.rubrics     = subj ? (subj.rubrics || []) : [];
+      if (this.subjectId) {
+        await this.loadStudentsAndExisting();
+      } else {
+        this.students = [];
+      }
+    },
+
+    async onFortnightChange(event) {
+      const parts   = event.target.value.split(':');
+      this.ftYear   = parseInt(parts[0]);
+      this.ftMonth  = parseInt(parts[1]);
+      this.ftPeriod = parseInt(parts[2]);
+      if (this.subjectId) await this.loadExisting();
+    },
+
+    async loadStudentsAndExisting() {
+      this.loading = true;
+      const [sRes] = await Promise.all([
         fetch(`/entry/students?grade=${encodeURIComponent(this.grade)}`),
-        fetch(`/entry/subjects?grade=${encodeURIComponent(this.grade)}`),
       ]);
       this.students = await sRes.json();
-      const subjects = await subRes.json();
-
-      // Build subject groups and flat column list
-      this.subjectGroups = subjects.map(s => ({
-        subjectId:   s.id,
-        subjectName: s.name,
-        rubrics: (s.rubrics || []).map(r => ({
-          rubricId:   r.id,
-          rubricName: r.name,
-          isRequired: r.is_required,
-        })),
-      }));
-      this.columns = this.subjectGroups.flatMap(sg => sg.rubrics);
-      this.rankings = {};
+      await this.loadExisting();
       this.loading = false;
+    },
+
+    async loadExisting() {
+      if (!this.subjectId) return;
+      const url = `/entry/existing?subject_id=${this.subjectId}&ft_year=${this.ftYear}&ft_month=${this.ftMonth}&ft_period=${this.ftPeriod}`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      this.rankings   = data;
+      this.savedCount = Object.keys(data).length;
     },
 
     submitForm() {
