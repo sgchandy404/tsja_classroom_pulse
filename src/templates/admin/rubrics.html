@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Rubrics — {{ subject.name }} — Classroom Pulse{% endblock %}
+{% block page_title %}{{ subject.name }} · Rubrics{% endblock %}
+
+{% block header_actions %}
+  <div class="flex items-center gap-3">
+    <a href="{{ url_for('admin.subjects', grade=subject.grade) }}"
+       class="text-xs font-medium text-slate-500 hover:text-slate-800">
+      ← Back to Subjects
+    </a>
+    <button
+      onclick="document.getElementById('add-rubric-modal').classList.remove('hidden')"
+      class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition-colors">
+      + Add Rubric
+    </button>
+  </div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb context -->
+<div class="mb-5 flex items-center gap-2 text-xs text-slate-400">
+  <a href="{{ url_for('admin.grades') }}" class="hover:text-slate-700">Grades</a>
+  <span>›</span>
+  <a href="{{ url_for('admin.subjects', grade=subject.grade) }}" class="hover:text-slate-700">{{ subject.grade }}</a>
+  <span>›</span>
+  <span class="text-slate-600 font-medium">{{ subject.name }}</span>
+  <span>›</span>
+  <span class="text-slate-600 font-medium">Rubrics</span>
+</div>
+
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="mb-4 flex items-center gap-3 rounded-xl px-4 py-3 text-sm
+              {% if category == 'error' %}bg-red-50 text-red-700 border border-red-100
+              {% else %}bg-green-50 text-green-700 border border-green-100{% endif %}">
+    {{ message }}
+  </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- Rubric table -->
+<div x-data="{ editingId: null }" class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+  <table class="min-w-full text-sm">
+    <thead>
+      <tr class="border-b border-slate-100 bg-slate-50">
+        <th class="w-8 px-3 py-3.5"></th><!-- order arrows -->
+        <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rubric Name</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Description</th>
+        <th class="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Required</th>
+        <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+        <th class="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for rubric in rubrics %}
+      <tr class="{% if not rubric.is_active %}opacity-50{% endif %} hover:bg-slate-50 transition-colors group">
+
+        <!-- Up/Down order buttons -->
+        <td class="px-3 py-3">
+          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {% if not loop.first %}
+            <form method="POST" action="{{ url_for('admin.move_rubric', rubric_id=rubric.id) }}">
+              <input type="hidden" name="direction" value="up" />
+              <button type="submit" class="flex h-4 w-4 items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+            </form>
+            {% endif %}
+            {% if not loop.last %}
+            <form method="POST" action="{{ url_for('admin.move_rubric', rubric_id=rubric.id) }}">
+              <input type="hidden" name="direction" value="down" />
+              <button type="submit" class="flex h-4 w-4 items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+
+        <!-- Name (view / inline edit) -->
+        <td class="px-5 py-3">
+          <span x-show="editingId !== {{ rubric.id }}" class="font-medium text-slate-800">{{ rubric.name }}</span>
+        </td>
+
+        <!-- Description -->
+        <td class="px-4 py-3 text-slate-500 text-xs max-w-xs">
+          <span x-show="editingId !== {{ rubric.id }}" class="truncate block">{{ rubric.description or '—' }}</span>
+        </td>
+
+        <!-- Required inline toggle -->
+        <td class="px-4 py-3 text-center">
+          <form method="POST" action="{{ url_for('admin.toggle_rubric_required', rubric_id=rubric.id) }}"
+                x-show="editingId !== {{ rubric.id }}">
+            <button type="submit"
+                    title="{{ 'Required — click to make optional' if rubric.is_required else 'Optional — click to make required' }}"
+                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent
+                           transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1
+                           {% if rubric.is_required %}bg-brand-600{% else %}bg-slate-200{% endif %}">
+              <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+                           {% if rubric.is_required %}translate-x-4{% else %}translate-x-0{% endif %}">
+              </span>
+            </button>
+          </form>
+        </td>
+
+        <!-- Status -->
+        <td class="px-4 py-3">
+          {% if rubric.is_active %}
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-600">
+              <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Active
+            </span>
+          {% else %}
+            <span class="text-xs text-slate-400">Inactive</span>
+          {% endif %}
+        </td>
+
+        <!-- Actions -->
+        <td class="px-4 py-3 text-right">
+          <div class="flex items-center justify-end gap-3" x-show="editingId !== {{ rubric.id }}">
+            <button @click="editingId = {{ rubric.id }}"
+                    class="text-xs font-medium text-slate-500 hover:text-slate-800">Edit</button>
+            {% if rubric.is_active %}
+              <a href="{{ url_for('admin.deactivate_rubric', rubric_id=rubric.id) }}"
+                 class="text-xs font-medium text-red-500 hover:text-red-700">Deactivate</a>
+            {% else %}
+              <form method="POST" action="{{ url_for('admin.reactivate_rubric', rubric_id=rubric.id) }}" class="inline">
+                <button type="submit" class="text-xs font-medium text-brand-600 hover:text-brand-800">Reactivate</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+
+      <!-- Inline edit row (shown when editingId matches) -->
+      <tr x-show="editingId === {{ rubric.id }}" x-cloak
+          class="bg-brand-50/40 border-y border-brand-100">
+        <td colspan="6" class="px-5 py-4">
+          <form method="POST" action="{{ url_for('admin.edit_rubric', rubric_id=rubric.id) }}"
+                class="flex flex-wrap items-end gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Name <span class="text-red-500">*</span></label>
+              <input type="text" name="name" value="{{ rubric.name }}" required
+                     class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 shadow-sm w-48
+                            focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+            </div>
+            <div class="flex-1 min-w-[200px]">
+              <label class="block text-xs font-medium text-slate-500 mb-1">Description</label>
+              <input type="text" name="description" value="{{ rubric.description or '' }}"
+                     placeholder="Optional short description"
+                     class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 shadow-sm
+                            focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Required?</label>
+              <div class="flex items-center gap-2 py-1.5">
+                <input type="checkbox" name="is_required" value="1" id="req-{{ rubric.id }}"
+                       {% if rubric.is_required %}checked{% endif %}
+                       class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                <label for="req-{{ rubric.id }}" class="text-sm text-slate-700">Required</label>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 pb-0.5">
+              <button type="submit"
+                      class="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
+                Save
+              </button>
+              <button type="button" @click="editingId = null"
+                      class="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="px-6 py-12 text-center text-sm text-slate-400">
+          No rubrics yet for {{ subject.name }}.
+          <button onclick="document.getElementById('add-rubric-modal').classList.remove('hidden')"
+                  class="ml-1 text-brand-600 hover:underline">Add the first one</button>.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Helper text -->
+<p class="mt-3 text-xs text-slate-400">
+  Use the ↑↓ arrows (hover a row) to reorder. The <strong>Required</strong> toggle controls whether teachers must fill in this rubric before submitting.
+  Deactivating a rubric hides it from new entries but keeps all historical data intact.
+</p>
+
+<!-- Add Rubric modal -->
+<div id="add-rubric-modal"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+     onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-xl">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+      <h3 class="text-sm font-semibold text-slate-800">Add Rubric — {{ subject.name }}</h3>
+      <button onclick="document.getElementById('add-rubric-modal').classList.add('hidden')"
+              class="text-slate-400 hover:text-slate-600">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.rubrics', subject_id=subject.id) }}"
+          class="px-6 py-5 space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Name <span class="text-red-500">*</span></label>
+        <input type="text" name="name" required autofocus
+               placeholder="e.g. Reading Comprehension"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Description <span class="text-slate-400 font-normal">(optional)</span></label>
+        <input type="text" name="description"
+               placeholder="Short note shown to teachers"
+               class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600" />
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="checkbox" name="is_required" value="1" id="new-required" checked
+               class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+        <label for="new-required" class="text-sm text-slate-700">Required — teachers must fill this in</label>
+      </div>
+      <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+        <button type="button"
+                onclick="document.getElementById('add-rubric-modal').classList.add('hidden')"
+                class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+          Cancel
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
+          Add Rubric
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

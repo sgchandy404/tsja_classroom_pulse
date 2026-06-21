@@ -31,6 +31,7 @@
         <tr class="border-b border-slate-100 bg-slate-50">
           <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
           <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</th>
+          <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rubrics</th>
           <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
           <th class="px-4 py-3.5"></th>
         </tr>
@@ -40,6 +41,13 @@
         <tr class="hover:bg-slate-50 transition-colors {% if not subj.is_active %}opacity-60{% endif %}">
           <td class="px-6 py-4 font-medium text-slate-800">{{ subj.name }}</td>
           <td class="px-4 py-4 text-slate-500">{{ subj.grade }}</td>
+          <td class="px-4 py-4">
+            {% set rubric_count = subj.rubrics | selectattr('is_active') | list | length %}
+            <a href="{{ url_for('admin.rubrics', subject_id=subj.id) }}"
+               class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800">
+              {{ rubric_count }} rubric{{ 's' if rubric_count != 1 }} →
+            </a>
+          </td>
           <td class="px-4 py-4">
             {% if subj.is_active %}
               <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-600">
@@ -55,7 +63,7 @@
                  class="text-xs font-medium text-red-500 hover:text-red-700">Deactivate</a>
             {% else %}
               <form method="POST" action="{{ url_for('admin.reactivate_subject', subject_id=subj.id) }}" class="inline">
-                <button type="submit" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">Reactivate</button>
+                <button type="submit" class="text-xs font-medium text-brand-600 hover:text-brand-800">Reactivate</button>
               </form>
             {% endif %}
           </td>

@@ -1,13 +1,15 @@
 import os
-import random
 import datetime
 import warnings
 from flask import Flask, redirect, url_for, render_template
 from flask_login import LoginManager, current_user
 from dotenv import load_dotenv
-from models import db, User, UserRole, Student, Subject, Grade, WeeklyEntry, AcademicYear, Term, AppConfig, RANKINGS
+from models import (
+    db, User, UserRole, Student, Subject, Grade, Rubric, FortnightEntry,
+    AcademicYear, Term, AppConfig,
+    date_to_fortnight, fortnight_label,
+)
 
-# Load .env from the project root (one level up from src/)
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 login_manager = LoginManager()
@@ -16,13 +18,11 @@ login_manager = LoginManager()
 def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates")
 
-    # Database — default to SQLite in src/instance/; override with DATABASE_URL
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL", "sqlite:///database.db"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # Secret key — required in production
     secret = os.getenv("SECRET_KEY")
     if not secret:
         warnings.warn(
@@ -56,35 +56,30 @@ def create_app() -> Flask:
     app.register_blueprint(admin_bp)
     app.register_blueprint(audit_bp)
 
-    # Inject Permissions object into every template
     from permissions import Permissions
+
     @app.context_processor
     def inject_perms():
         return {"perms": Permissions(current_user)}
 
-    # Inject topbar context: current week, active term, entries pending
     @app.context_processor
     def inject_topbar():
         if not current_user.is_authenticated:
             return {}
         today = datetime.date.today()
-        iso   = today.isocalendar()
-        week, year = iso.week, iso.year
-        try:
-            monday = datetime.date.fromisocalendar(year, week, 1)
-            sunday = monday + datetime.timedelta(days=6)
-            week_label = f"Wk {week} · {monday.strftime('%d %b')} – {sunday.strftime('%d %b')}"
-        except ValueError:
-            week_label = f"Week {week}"
+        ft_year, ft_month, ft_period = date_to_fortnight(today)
+        label = fortnight_label(ft_year, ft_month, ft_period)
+
         ay = AcademicYear.query.filter_by(is_active=True).first()
         active_term = None
         ay_label    = None
         if ay:
             ay_label = ay.label
             for t in ay.terms:
-                if t.contains_week(week, year):
+                if t.contains_fortnight(ft_year, ft_month, ft_period):
                     active_term = t
                     break
+
         p = Permissions(current_user)
         pending = None
         if not p.is_admin and not p.is_coordinator:
@@ -92,16 +87,25 @@ def create_app() -> Flask:
             if pairs:
                 total_slots, entered = 0, 0
                 for grade, sid in pairs:
-                    total_slots += Student.query.filter_by(grade=grade, is_active=True).count()
-                    entered     += WeeklyEntry.query.filter_by(
-                        subject_id=sid, iso_week=week, iso_year=year
+                    # Count required rubrics × students for this subject
+                    req_rubrics = Rubric.query.filter_by(
+                        subject_id=sid, is_required=True, is_active=True
+                    ).count()
+                    students = Student.query.filter_by(
+                        grade=grade, is_active=True
+                    ).count()
+                    total_slots += req_rubrics * students
+                    entered += FortnightEntry.query.filter_by(
+                        subject_id=sid,
+                        ft_year=ft_year, ft_month=ft_month, ft_period=ft_period,
                     ).count()
                 pending = max(0, total_slots - entered)
+
         return {
-            "topbar_week_label": week_label,
-            "topbar_term":       active_term,
-            "topbar_ay_label":   ay_label,
-            "topbar_pending":    pending,
+            "topbar_period_label": label,
+            "topbar_term":         active_term,
+            "topbar_ay_label":     ay_label,
+            "topbar_pending":      pending,
         }
 
     with app.app_context():
@@ -135,21 +139,21 @@ def load_user(user_id: str):
 
 
 def _migrate_schema() -> None:
-    """Add new columns/tables to existing DBs without losing data (SQLite-safe)."""
+    """Safely add new columns to existing tables (SQLite-safe try/except)."""
+    migrations = [
+        "ALTER TABLE rubrics ADD COLUMN description VARCHAR(200)",
+        "ALTER TABLE rubrics ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0",
+    ]
     with db.engine.connect() as conn:
-        for stmt in [
-            "ALTER TABLE students ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
-            "ALTER TABLE subjects ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
-        ]:
+        for sql in migrations:
             try:
-                conn.execute(db.text(stmt))
+                conn.execute(db.text(sql))
                 conn.commit()
             except Exception:
                 pass  # column already exists
 
 
 def _seed_grades() -> None:
-    """Auto-migrate existing grade strings into the Grade registry if it is empty."""
     if Grade.query.count() > 0:
         return
     existing = set(
@@ -175,7 +179,6 @@ def _seed_admin() -> None:
         db.session.commit()
         print(f"[init] Default admin created — username: admin  password: {default_pw}")
     else:
-        # Ensure the admin user has an admin role (migration for existing DBs)
         admin = User.query.filter_by(username="admin").first()
         if admin and not any(r.role == "admin" for r in admin.roles):
             db.session.add(UserRole(user_id=admin.id, role="admin"))
@@ -183,41 +186,16 @@ def _seed_admin() -> None:
 
 
 def _seed_default_config() -> None:
-    """Seed default AppConfig values if not already present."""
     if not db.session.get(AppConfig, "grace_period_hours"):
         db.session.add(AppConfig(key="grace_period_hours", value="48"))
         db.session.commit()
 
 
-def _build_default_terms(start_year: int) -> list[dict]:
-    """Return Term kwargs for an Indian Cambridge-affiliated school calendar."""
-    end_year = start_year + 1
-
-    def _w(year, month, day):
-        iso = datetime.date(year, month, day).isocalendar()
-        return iso.week, iso.year
-
-    t1s, t1sy = _w(start_year, 4,  1)
-    t1e, t1ey = _w(start_year, 9, 30)
-    t2s, t2sy = _w(start_year, 10, 1)
-    t2e, t2ey = _w(start_year, 12, 31)
-    t3s, t3sy = _w(end_year,   1,  1)
-    t3e, t3ey = _w(end_year,   3, 31)
-
-    return [
-        dict(name="Term 1", start_iso_week=t1s, start_iso_year=t1sy, end_iso_week=t1e, end_iso_year=t1ey),
-        dict(name="Term 2", start_iso_week=t2s, start_iso_year=t2sy, end_iso_week=t2e, end_iso_year=t2ey),
-        dict(name="Term 3", start_iso_week=t3s, start_iso_year=t3sy, end_iso_week=t3e, end_iso_year=t3ey),
-    ]
-
-
 def _seed_default_academic_year() -> None:
-    """Create and activate the current academic year if none exist."""
     if AcademicYear.query.count() > 0:
         return
 
     today = datetime.date.today()
-    # Academic year starts in April; if we're before April it's the previous year's start
     start_year = today.year if today.month >= 4 else today.year - 1
     label = f"{start_year}–{str(start_year + 1)[-2:]}"
 
@@ -225,141 +203,346 @@ def _seed_default_academic_year() -> None:
     db.session.add(ay)
     db.session.flush()
 
-    for td in _build_default_terms(start_year):
+    end_year = start_year + 1
+    for td in [
+        dict(name="Term 1",
+             start_date=datetime.date(start_year, 4, 1),
+             end_date=datetime.date(start_year, 9, 30)),
+        dict(name="Term 2",
+             start_date=datetime.date(start_year, 10, 1),
+             end_date=datetime.date(start_year, 12, 31)),
+        dict(name="Term 3",
+             start_date=datetime.date(end_year, 1, 1),
+             end_date=datetime.date(end_year, 3, 31)),
+    ]:
         db.session.add(Term(academic_year_id=ay.id, **td))
 
     db.session.commit()
     print(f"[init] Academic year {label} created and set as active.")
 
 
-def _seed_demo() -> None:
-    random.seed(42)
+def _seed_demo() -> None:  # noqa: C901
+    """
+    Seed Grade 6 demo data:
+      30 students (15 normal · 5 warning · 5 at-risk · 5 improving)
+      6 subjects with rubrics (some optional)
+      6 calendar fortnights of Term 1 (Apr–Jun 2026)
+      6 teacher accounts mapped to Grade 6 subjects
+    """
+    if Subject.query.filter_by(grade="Grade 6").first():
+        return   # already seeded
 
-    GRADES = {
-        "Grade 5A": {
-            "subjects": ["Mathematics", "English", "Science", "Social Studies", "Art"],
-            "students": [
-                ("Aarav Sharma",    "5A-001"),
-                ("Priya Nair",      "5A-002"),
-                ("Rohan Menon",     "5A-003"),
-                ("Ananya Pillai",   "5A-004"),
-                ("Kiran Thomas",    "5A-005"),
-                ("Divya Krishnan",  "5A-006"),
-                ("Arjun Iyer",      "5A-007"),
-            ],
-        },
-        "Grade 6B": {
-            "subjects": ["Mathematics", "English", "Science", "History", "Physical Education"],
-            "students": [
-                ("Meera Reddy",     "6B-001"),
-                ("Sanjay Kumar",    "6B-002"),
-                ("Lakshmi Rao",     "6B-003"),
-                ("Vikram Singh",    "6B-004"),
-                ("Neha Patel",      "6B-005"),
-                ("Rahul Verma",     "6B-006"),
-                ("Aisha Siddiqui",  "6B-007"),
-            ],
-        },
-        "Grade 7C": {
-            "subjects": ["Mathematics", "English", "Science", "Geography", "Computer Science"],
-            "students": [
-                ("Dev Kapoor",      "7C-001"),
-                ("Sneha Joshi",     "7C-002"),
-                ("Aryan Mehta",     "7C-003"),
-                ("Pooja Desai",     "7C-004"),
-                ("Kabir Malhotra",  "7C-005"),
-                ("Riya Chopra",     "7C-006"),
-            ],
-        },
-    }
+    import random
+    import datetime as dt
 
-    # Weeks: last 6 weeks ending at week 22, 2026
-    BASE_YEAR = 2026
-    WEEKS = list(range(17, 23))  # weeks 17-22
+    WT = "Working Towards"
+    ME = "Meets Expectations"
+    EE = "Exceeds Expectations"
 
-    # Seed Grade registry
-    for grade_name in GRADES:
-        if not Grade.query.filter_by(name=grade_name).first():
-            db.session.add(Grade(name=grade_name, is_active=True))
+    # ── Fortnights: (year, month, period, entry_datetime) ─────────────────
+    FTS = [
+        (2026, 4, 1, dt.datetime(2026,  4, 10,  9,  0)),
+        (2026, 4, 2, dt.datetime(2026,  4, 24, 10, 30)),
+        (2026, 5, 1, dt.datetime(2026,  5,  8,  9, 15)),
+        (2026, 5, 2, dt.datetime(2026,  5, 22, 11,  0)),
+        (2026, 6, 1, dt.datetime(2026,  6,  6,  9, 45)),
+        (2026, 6, 2, dt.datetime(2026,  6, 19, 10,  0)),
+    ]
+    N = len(FTS)
+
+    # ── Grade ─────────────────────────────────────────────────────────────
+    if not Grade.query.filter_by(name="Grade 6").first():
+        db.session.add(Grade(name="Grade 6", is_active=True))
+        db.session.flush()
+
+    # ── Academic year: use active one (already seeded by _seed_default_academic_year) ──
+    ay = AcademicYear.query.filter_by(is_active=True).first()
+    if not ay:
+        ay = AcademicYear(label="2026–27", start_year=2026, is_active=True)
+        db.session.add(ay)
+        db.session.flush()
+        for td in [
+            dict(name="Term 1", start_date=dt.date(2026, 4, 1),  end_date=dt.date(2026, 9, 30)),
+            dict(name="Term 2", start_date=dt.date(2026, 10, 1), end_date=dt.date(2026, 12, 31)),
+            dict(name="Term 3", start_date=dt.date(2027, 1, 1),  end_date=dt.date(2027, 3, 31)),
+        ]:
+            db.session.add(Term(academic_year_id=ay.id, **td))
+        db.session.flush()
+
+    # ── Subjects + Rubrics ────────────────────────────────────────────────
+    # (subject_name, [(rubric_name, is_required), ...])
+    SUBJECTS_DEF = [
+        ("Mathematical Reasoning & Logic", [
+            ("Logical Reasoning",                             True),
+            ("Numerical Problem Solving",                    True),
+            ("Arithmetic: Decimals, Fractions & %",          True),
+            ("Algebraic Expressions & Inequalities",         True),
+            ("Geometry: Area, Volume & Perimeter",           True),
+            ("Data Handling & Interpretation",               True),
+            ("Ratio & Proportion",                           True),
+            ("Sequences & Mathematical Justification",       False),  # optional
+        ]),
+        ("Science", [
+            ("Models & Diagrams",       True),
+            ("Experiments & Analysis",  True),
+            ("Scientific Writing",      True),
+            ("Scientific Terminology",  True),
+            ("Real-Life Connections",   False),  # optional
+        ]),
+        ("English, Language & Literacy", [
+            ("Vocabulary & Word Structure",       True),
+            ("Grammar, Punctuation & Structure",  True),
+            ("Planning & Writing",                True),
+            ("Interpreting Texts",                True),
+            ("Standard English",                  True),
+        ]),
+        ("Computing", [
+            ("Algorithms & Flowcharts",                    True),
+            ("Block Programming: Selection & Comparison",  True),
+            ("Variables & Data",                           True),
+            ("Scratch Game Creation",                      True),
+            ("Software Literacy",                          True),
+            ("IP, DNS & Networking",                       True),
+            ("Online Safety & Privacy",                    True),
+        ]),
+        ("Geography & History", [
+            ("Civics & History Interest",       True),
+            ("Earth's Features",                True),
+            ("Constitution & Human Rights",     True),
+            ("Elections & Election Commission", True),
+            ("Sustainability Initiatives",      True),
+            ("Peer-Teaching Contribution",      False),  # optional
+            ("CSR Understanding",               False),  # optional
+        ]),
+        ("Art & Design", [
+            ("Creative Expression",           True),
+            ("Design Awareness",              True),
+            ("Application of Skills",         True),
+            ("Collaboration & Empathy",       True),
+            ("Responsibility & Organisation", True),
+            ("Cultural Sensitivity",          False),  # optional
+        ]),
+    ]
+
+    subjects: dict = {}        # name → Subject
+    rubrics_map: dict = {}     # name → [Rubric]  in display_order
+
+    for s_name, r_defs in SUBJECTS_DEF:
+        subj = Subject(name=s_name, grade="Grade 6", is_active=True)
+        db.session.add(subj)
+        db.session.flush()
+        subjects[s_name] = subj
+        rubrics_map[s_name] = []
+        for r_idx, (r_name, r_req) in enumerate(r_defs):
+            rub = Rubric(
+                subject_id=subj.id, name=r_name,
+                is_required=r_req, is_active=True, display_order=r_idx,
+            )
+            db.session.add(rub)
+            rubrics_map[s_name].append(rub)
+        db.session.flush()
+
+    # ── Students ──────────────────────────────────────────────────────────
+    NAMES = [
+        # 0-14  Normal
+        "Aarav Sharma",    "Priya Nair",      "Rohan Menon",
+        "Divya Pillai",    "Arjun Reddy",     "Meera Krishnan",
+        "Karthik Iyer",    "Ananya Gupta",    "Vikram Patel",
+        "Sanya Joshi",     "Aditya Singh",    "Pooja Varma",
+        "Nikhil Bhat",     "Lavanya Rao",     "Rahul Chandra",
+        # 15-19 Warning  (1-2 rubrics stuck in one subject)
+        "Ishaan Mathur",   "Tanya Desai",     "Vihaan Kulkarni",
+        "Ridhi Mehta",     "Aryaman Shetty",
+        # 20-24 At-Risk  (3+ rubrics stuck in one subject)
+        "Devika Pillai",   "Siddharth Nair",  "Kriti Verma",
+        "Yash Tripathi",   "Amara Joshi",
+        # 25-29 Improving (clear upward trend)
+        "Neel Kapoor",     "Shreya Mishra",   "Kabir Rao",
+        "Zara Ahmed",      "Tanvi Bose",
+    ]
+    students = []
+    for i, name in enumerate(NAMES):
+        s = Student(
+            name=name, grade="Grade 6",
+            roll_number=f"6{i+1:03d}", is_active=True,
+        )
+        db.session.add(s)
+        students.append(s)
     db.session.flush()
 
-    # Insert subjects and students
-    subject_objs = {}
-    student_objs = {}
-    for grade, data in GRADES.items():
-        for subj_name in data["subjects"]:
-            s = Subject(name=subj_name, grade=grade)
-            db.session.add(s)
-            subject_objs[(grade, subj_name)] = s
+    # ── Teachers (one per subject) ────────────────────────────────────────
+    TEACHER_DEFS = [
+        ("teacher_math_g6",  "MathG6#1",  "Mathematical Reasoning & Logic"),
+        ("teacher_sci_g6",   "SciG6#1",   "Science"),
+        ("teacher_eng_g6",   "EngG6#1",   "English, Language & Literacy"),
+        ("teacher_comp_g6",  "CompG6#1",  "Computing"),
+        ("teacher_gh_g6",    "GHG6#1",    "Geography & History"),
+        ("teacher_art_g6",   "ArtG6#1",   "Art & Design"),
+    ]
+    teacher_by: dict = {}  # subject_name → User
+    for uname, pw, s_name in TEACHER_DEFS:
+        u = User.query.filter_by(username=uname).first()
+        if not u:
+            u = User(username=uname)
+            u.set_password(pw)
+            db.session.add(u)
+            db.session.flush()
+            db.session.add(UserRole(
+                user_id=u.id, role="teacher",
+                grade="Grade 6", subject_id=subjects[s_name].id,
+            ))
+            db.session.flush()
+        teacher_by[s_name] = u
 
-        for name, roll in data["students"]:
-            st = Student(name=name, roll_number=roll, grade=grade)
-            db.session.add(st)
-            student_objs[(grade, roll)] = st
+    # ── Ranking patterns (6 fortnights each) ─────────────────────────────
+    # Notation: list of N ranking strings or None (no entry = blank)
+    STUCK    = [WT, WT, WT, WT, WT, WT]       # last3=[WT,WT,WT]   → 'stuck'
+    DECLINE  = [EE, EE, ME, ME, ME, WT]        # last3=[ME,ME,WT]   → 'declining'
+    IMPROV1  = [WT, WT, ME, ME, EE, EE]        # last3=[ME,EE,EE]   → clean (not flagged)
+    IMPROV2  = [WT, ME, ME, EE, EE, EE]        # last3=[EE,EE,EE]   → clean
+    IMPROV3  = [WT, WT, WT, ME, ME, EE]        # last3=[ME,ME,EE]   → clean
 
-    db.session.flush()  # get IDs
+    def rand_good(seed: int) -> list:
+        """Healthy ME/EE mix, never stuck/declining in the last 3 entries."""
+        rng = random.Random(seed)
+        pool = [ME, ME, ME, EE, EE]             # no WT in pool → last3 always ≥ ME
+        pat  = [rng.choice(pool) for _ in range(N)]
+        # Occasionally a single WT early (positions 0..N-4) for realism
+        if rng.random() < 0.30:
+            pat[rng.randint(0, N - 4)] = WT
+        return pat
 
-    # Controlled at-risk scenarios
-    # Aarav Sharma (5A-001) — stuck in Mathematics for last 3 weeks
-    # Priya Nair (5A-002)   — declining in Science: EE→ME→WT over last 3 weeks
-    # Sanjay Kumar (6B-002) — stuck in Mathematics for last 3 weeks
-    # Dev Kapoor (7C-001)   — declining in Computer Science: EE→ME→WT
+    def rand_mid(seed: int) -> list:
+        """Below-average mix with WT, but last entry always ME/EE to avoid false flags."""
+        rng = random.Random(seed)
+        pool = [WT, ME, ME, EE]
+        pat  = [rng.choice(pool) for _ in range(N)]
+        if pat[-1] == WT:                        # prevent 'declining' from tail WT
+            pat[-1] = ME
+        return pat
 
-    at_risk_scenarios = {
-        ("Grade 5A", "5A-001", "Mathematics"):        ["ME", "WT", "WT", "WT", "WT", "WT"],
-        ("Grade 5A", "5A-002", "Science"):            ["EE", "EE", "EE", "EE", "ME", "WT"],
-        ("Grade 6B", "6B-002", "Mathematics"):        ["ME", "WT", "WT", "WT", "WT", "WT"],
-        ("Grade 7C", "7C-001", "Computer Science"):   ["EE", "ME", "ME", "EE", "ME", "WT"],
+    def optional_blanks(pat: list, seed: int, prob: float = 0.40) -> list:
+        """Randomly blank some entries for optional rubrics."""
+        rng = random.Random(seed + 9_000)
+        return [None if rng.random() < prob else v for v in pat]
+
+    # ── Warning student config: subject → {rubric_idx: pattern} ──────────
+    # Each student has at most 2 flagged rubrics in one subject → stuck_count ≤ 2 → 'warning'
+    WARNING_FLAGS: dict[int, tuple] = {
+        15: ("Mathematical Reasoning & Logic",  {0: STUCK,   1: STUCK}),    # 2 stuck
+        16: ("Science",                          {0: STUCK}),                # 1 stuck
+        17: ("English, Language & Literacy",    {2: STUCK,   3: DECLINE}),  # 2 flagged
+        18: ("Computing",                        {3: STUCK}),                # 1 stuck
+        19: ("Geography & History",             {1: STUCK,   2: DECLINE}),  # 2 flagged
     }
 
-    RANK_MAP = {"WT": "Working Towards", "ME": "Meets Expectations", "EE": "Exceeds Expectations"}
-    WEIGHTS = [0.15, 0.45, 0.40]  # realistic distribution skewing toward ME/EE
+    # ── At-Risk student config: subject → [rubric indices that are flagged] ──
+    # rubrics 0,1,2 → STUCK; rubric 3 → DECLINE  → stuck_count ≥ 3 → 'at_risk'
+    AT_RISK_TARGETS: dict[int, str] = {
+        20: "Mathematical Reasoning & Logic",
+        21: "Science",
+        22: "Computing",
+        23: "English, Language & Literacy",
+        24: "Geography & History",
+    }
 
-    for grade, data in GRADES.items():
-        for subj_name in data["subjects"]:
-            subj = subject_objs[(grade, subj_name)]
-            for name, roll in data["students"]:
-                student = student_objs[(grade, roll)]
-                for i, week in enumerate(WEEKS):
-                    scenario_key = (grade, roll, subj_name)
-                    if scenario_key in at_risk_scenarios:
-                        ranking = RANK_MAP[at_risk_scenarios[scenario_key][i]]
-                    else:
-                        ranking = random.choices(RANKINGS, weights=WEIGHTS, k=1)[0]
-                    db.session.add(WeeklyEntry(
+    # ── Improving student base patterns (one per student) ─────────────────
+    IMPROV_BASE = [IMPROV1, IMPROV2, IMPROV3, IMPROV1, IMPROV2]
+
+    # ── Pattern resolver ──────────────────────────────────────────────────
+    def get_pattern(s_idx: int, s_name: str, r_idx: int, rubric: Rubric) -> list:
+        is_opt = not rubric.is_required
+        s_hash = sum(ord(c) for c in s_name) % 10007
+        seed   = s_idx * 7919 + r_idx * 997 + s_hash
+
+        # --- Improving (25-29) -------------------------------------------
+        if s_idx >= 25:
+            base = list(IMPROV_BASE[s_idx - 25])
+            # Vary later rubrics: mostly ME heading to EE
+            if r_idx >= 3:
+                base = [ME if v == WT else v for v in base]
+                base[-1] = EE
+            if is_opt:
+                return optional_blanks(base, seed, prob=0.35)
+            # Simulate FT6 not yet entered for ~25% of rubrics
+            result = base[:]
+            if r_idx % 4 == 0:
+                result[-1] = None
+            return result
+
+        # --- At-Risk (20-24) ---------------------------------------------
+        if s_idx in AT_RISK_TARGETS:
+            target = AT_RISK_TARGETS[s_idx]
+            if s_name == target:
+                if r_idx < 3:
+                    pat = list(STUCK)             # 'stuck'
+                elif r_idx == 3:
+                    pat = list(DECLINE)           # 'declining'
+                else:
+                    pat = rand_mid(seed)
+                if is_opt:
+                    return optional_blanks(pat, seed)
+                return pat
+            # Non-target subjects: below-average but not flagged
+            pat = rand_mid(seed + 500)
+            if is_opt:
+                return optional_blanks(pat, seed)
+            return pat
+
+        # --- Warning (15-19) ---------------------------------------------
+        if s_idx in WARNING_FLAGS:
+            target, flagged = WARNING_FLAGS[s_idx]
+            if s_name == target and r_idx in flagged:
+                pat = list(flagged[r_idx])
+                if is_opt:
+                    return optional_blanks(pat, seed)
+                return pat
+            pat = rand_good(seed)
+            if is_opt:
+                return optional_blanks(pat, seed)
+            return pat
+
+        # --- Normal (0-14) -----------------------------------------------
+        pat = rand_good(seed) if s_idx < 10 else rand_mid(seed)
+        if is_opt:
+            return optional_blanks(pat, seed)
+        # ~8% chance of one missed required entry mid-term (not FT6)
+        if random.Random(seed + 1).random() < 0.08:
+            gap = random.Random(seed + 2).randint(2, N - 2)
+            pat[gap] = None
+        return pat
+
+    # ── Generate entries ──────────────────────────────────────────────────
+    total = 0
+    for s_idx, student in enumerate(students):
+        for s_name, _ in SUBJECTS_DEF:
+            subj    = subjects[s_name]
+            creator = teacher_by[s_name]
+            for r_idx, rubric in enumerate(rubrics_map[s_name]):
+                pattern = get_pattern(s_idx, s_name, r_idx, rubric)
+                for ft_idx, (fy, fm, fp, entry_dt) in enumerate(FTS):
+                    if ft_idx >= len(pattern):
+                        continue
+                    ranking = pattern[ft_idx]
+                    if ranking is None:
+                        continue
+                    db.session.add(FortnightEntry(
                         student_id=student.id,
                         subject_id=subj.id,
-                        iso_week=week,
-                        iso_year=BASE_YEAR,
+                        rubric_id=rubric.id,
+                        ft_year=fy, ft_month=fm, ft_period=fp,
                         ranking=ranking,
+                        created_by=creator.id,  created_at=entry_dt,
+                        updated_by=creator.id,  updated_at=entry_dt,
                     ))
+                    total += 1
 
     db.session.commit()
-
-    # Demo users for RBAC testing (skip if already exist)
-    if not User.query.filter_by(username="teacher_5a").first():
-        maths_5a = subject_objs[("Grade 5A", "Mathematics")]
-        science_5a = subject_objs[("Grade 5A", "Science")]
-
-        t = User(username="teacher_5a"); t.set_password("test123")
-        db.session.add(t); db.session.flush()
-        db.session.add(UserRole(user_id=t.id, role="teacher", grade="Grade 5A", subject_id=maths_5a.id))
-        db.session.add(UserRole(user_id=t.id, role="teacher", grade="Grade 5A", subject_id=science_5a.id))
-
-        ic = User(username="incharge_5a"); ic.set_password("test123")
-        db.session.add(ic); db.session.flush()
-        db.session.add(UserRole(user_id=ic.id, role="incharge", grade="Grade 5A"))
-        db.session.add(UserRole(user_id=ic.id, role="teacher", grade="Grade 5A", subject_id=maths_5a.id))
-
-        co = User(username="coordinator"); co.set_password("test123")
-        db.session.add(co); db.session.flush()
-        db.session.add(UserRole(user_id=co.id, role="coordinator"))
-
-        db.session.commit()
-        print("[seed] Demo users: teacher_5a, incharge_5a, coordinator (password: test123)")
-
-    print("[seed] Demo data loaded — 3 grades, 20 students, 6 weeks of entries.")
-    print("[seed] At-risk scenarios: Aarav (stuck), Priya (declining), Sanjay (stuck), Dev (declining).")
+    print(
+        f"[seed] Grade 6 demo: 30 students · 6 subjects · "
+        f"{sum(len(v) for v in rubrics_map.values())} rubrics · "
+        f"{total} fortnight entries."
+    )
 
 
 if __name__ == "__main__":

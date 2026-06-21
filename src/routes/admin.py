@@ -4,7 +4,7 @@ All routes require the 'admin' role.
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
-from models import db, User, UserRole, Subject, Student, Grade, AppConfig, WeeklyEntry, ROLES
+from models import db, User, UserRole, Subject, Student, Grade, Rubric, AppConfig, FortnightEntry, ROLES
 from permissions import require_role, log_audit, perms as get_perms
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -284,7 +284,7 @@ def deactivate_grade(grade_id):
     student_count = Student.query.filter_by(grade=grade.name, is_active=True).count()
     subject_count = Subject.query.filter_by(grade=grade.name, is_active=True).count()
     entry_count = (
-        WeeklyEntry.query.join(Student)
+        FortnightEntry.query.join(Student)
         .filter(Student.grade == grade.name)
         .count()
     )
@@ -379,7 +379,7 @@ def deactivate_subject(subject_id):
         db.session.commit()
         flash(f"Subject '{subj.name}' deactivated.", "success")
         return redirect(url_for("admin.subjects", grade=subj.grade))
-    entry_count = WeeklyEntry.query.filter_by(subject_id=subj.id).count()
+    entry_count = FortnightEntry.query.filter_by(subject_id=subj.id).count()
     return render_template("admin/deactivate_subject_confirm.html",
                            subject=subj, entry_count=entry_count)
 
@@ -510,7 +510,7 @@ def deactivate_student(student_id):
         flash(f"Student '{student.name}' deactivated.", "success")
         return redirect(url_for("admin.students", grade=student.grade))
 
-    entry_count = WeeklyEntry.query.filter_by(student_id=student.id).count()
+    entry_count = FortnightEntry.query.filter_by(student_id=student.id).count()
     return render_template("admin/deactivate_student_confirm.html",
                            student=student, entry_count=entry_count)
 
@@ -531,3 +531,199 @@ def reactivate_student(student_id):
     db.session.commit()
     flash(f"Student '{student.name}' reactivated.", "success")
     return redirect(url_for("admin.students", grade=student.grade))
+
+
+# ---------------------------------------------------------------------------
+# Routes: rubric management (admin only, sub-resource of Subject)
+# ---------------------------------------------------------------------------
+
+def _next_display_order(subject_id: int) -> int:
+    """Return display_order one past the current maximum for this subject."""
+    from sqlalchemy import func
+    max_order = db.session.query(func.max(Rubric.display_order)).filter_by(
+        subject_id=subject_id
+    ).scalar()
+    return (max_order or 0) + 1
+
+
+@admin_bp.route("/subjects/<int:subject_id>/rubrics", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def rubrics(subject_id):
+    subj = db.session.get(Subject, subject_id)
+    if not subj:
+        abort(404)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip() or None
+        is_required = request.form.get("is_required") == "1"
+
+        if not name:
+            flash("Rubric name is required.", "error")
+        elif Rubric.query.filter_by(subject_id=subject_id, name=name).first():
+            flash(f"A rubric named '{name}' already exists for this subject.", "error")
+        else:
+            rubric = Rubric(
+                subject_id=subject_id,
+                name=name,
+                description=description,
+                is_required=is_required,
+                is_active=True,
+                display_order=_next_display_order(subject_id),
+            )
+            db.session.add(rubric)
+            db.session.flush()
+            log_audit(user=current_user, action="create", model_name="Rubric",
+                      record_id=rubric.id, field_name="name",
+                      new_value=f"{name} ({'required' if is_required else 'optional'})")
+            db.session.commit()
+            flash(f"Rubric '{name}' added.", "success")
+        return redirect(url_for("admin.rubrics", subject_id=subject_id))
+
+    all_rubrics = Rubric.query.filter_by(subject_id=subject_id).order_by(
+        Rubric.display_order, Rubric.id
+    ).all()
+    return render_template("admin/rubrics.html", subject=subj, rubrics=all_rubrics)
+
+
+@admin_bp.route("/rubrics/<int:rubric_id>/edit", methods=["POST"])
+@login_required
+@require_role("admin")
+def edit_rubric(rubric_id):
+    rubric = db.session.get(Rubric, rubric_id)
+    if not rubric:
+        abort(404)
+
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "").strip() or None
+    is_required = request.form.get("is_required") == "1"
+
+    if not name:
+        flash("Rubric name is required.", "error")
+        return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+    clash = Rubric.query.filter(
+        Rubric.subject_id == rubric.subject_id,
+        Rubric.name == name,
+        Rubric.id != rubric_id,
+    ).first()
+    if clash:
+        flash(f"A rubric named '{name}' already exists for this subject.", "error")
+        return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+    old_name = rubric.name
+    rubric.name = name
+    rubric.description = description
+    rubric.is_required = is_required
+    log_audit(user=current_user, action="edit", model_name="Rubric",
+              record_id=rubric.id, field_name="name",
+              old_value=old_name,
+              new_value=f"{name} ({'required' if is_required else 'optional'})")
+    db.session.commit()
+    flash(f"Rubric '{name}' updated.", "success")
+    return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+
+@admin_bp.route("/rubrics/<int:rubric_id>/toggle_required", methods=["POST"])
+@login_required
+@require_role("admin")
+def toggle_rubric_required(rubric_id):
+    rubric = db.session.get(Rubric, rubric_id)
+    if not rubric:
+        abort(404)
+    rubric.is_required = not rubric.is_required
+    state = "required" if rubric.is_required else "optional"
+    log_audit(user=current_user, action="edit", model_name="Rubric",
+              record_id=rubric.id, field_name="is_required",
+              old_value=str(not rubric.is_required), new_value=str(rubric.is_required),
+              note=f"Toggled '{rubric.name}' to {state}")
+    db.session.commit()
+    flash(f"'{rubric.name}' is now {state}.", "success")
+    return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+
+@admin_bp.route("/rubrics/<int:rubric_id>/move", methods=["POST"])
+@login_required
+@require_role("admin")
+def move_rubric(rubric_id):
+    rubric = db.session.get(Rubric, rubric_id)
+    if not rubric:
+        abort(404)
+    direction = request.form.get("direction")  # "up" or "down"
+
+    siblings = Rubric.query.filter_by(subject_id=rubric.subject_id).order_by(
+        Rubric.display_order, Rubric.id
+    ).all()
+    ids = [r.id for r in siblings]
+    idx = ids.index(rubric_id)
+
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    if 0 <= swap_idx < len(siblings):
+        sibling = siblings[swap_idx]
+        # Swap display_order values
+        rubric.display_order, sibling.display_order = sibling.display_order, rubric.display_order
+        # If they were equal, nudge them apart
+        if rubric.display_order == sibling.display_order:
+            if direction == "up":
+                rubric.display_order -= 1
+            else:
+                rubric.display_order += 1
+        db.session.commit()
+
+    return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+
+@admin_bp.route("/rubrics/<int:rubric_id>/deactivate", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def deactivate_rubric(rubric_id):
+    rubric = db.session.get(Rubric, rubric_id)
+    if not rubric:
+        abort(404)
+
+    if request.method == "POST":
+        # Guard: at least one active rubric must remain
+        active_count = Rubric.query.filter_by(
+            subject_id=rubric.subject_id, is_active=True
+        ).count()
+        if active_count <= 1:
+            flash("Cannot deactivate the last active rubric for this subject.", "error")
+            return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+        rubric.is_active = False
+        log_audit(user=current_user, action="edit", model_name="Rubric",
+                  record_id=rubric.id, field_name="is_active",
+                  old_value="True", new_value="False",
+                  note=f"Deactivated rubric '{rubric.name}' on {rubric.subject.name}")
+        db.session.commit()
+        flash(f"Rubric '{rubric.name}' deactivated.", "success")
+        return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+    entry_count = FortnightEntry.query.filter_by(rubric_id=rubric_id).count()
+    active_count = Rubric.query.filter_by(
+        subject_id=rubric.subject_id, is_active=True
+    ).count()
+    return render_template(
+        "admin/deactivate_rubric_confirm.html",
+        rubric=rubric,
+        entry_count=entry_count,
+        is_last_active=(active_count <= 1),
+    )
+
+
+@admin_bp.route("/rubrics/<int:rubric_id>/reactivate", methods=["POST"])
+@login_required
+@require_role("admin")
+def reactivate_rubric(rubric_id):
+    rubric = db.session.get(Rubric, rubric_id)
+    if not rubric:
+        abort(404)
+    rubric.is_active = True
+    log_audit(user=current_user, action="edit", model_name="Rubric",
+              record_id=rubric.id, field_name="is_active",
+              old_value="False", new_value="True",
+              note=f"Reactivated rubric '{rubric.name}' on {rubric.subject.name}")
+    db.session.commit()
+    flash(f"Rubric '{rubric.name}' reactivated.", "success")
+    return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))

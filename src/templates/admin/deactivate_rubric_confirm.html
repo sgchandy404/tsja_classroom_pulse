@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Deactivate Rubric — Classroom Pulse{% endblock %}
+{% block page_title %}Deactivate Rubric{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+
+  <!-- Breadcrumb -->
+  <div class="mb-5 flex items-center gap-2 text-xs text-slate-400">
+    <a href="{{ url_for('admin.subjects', grade=rubric.subject.grade) }}" class="hover:text-slate-700">{{ rubric.subject.grade }}</a>
+    <span>›</span>
+    <a href="{{ url_for('admin.rubrics', subject_id=rubric.subject_id) }}" class="hover:text-slate-700">{{ rubric.subject.name }}</a>
+    <span>›</span>
+    <span class="text-slate-600 font-medium">Deactivate "{{ rubric.name }}"</span>
+  </div>
+
+  {% if is_last_active %}
+  <!-- Blocked: last active rubric -->
+  <div class="rounded-2xl border border-red-200 bg-red-50 px-8 py-8 text-center">
+    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 mb-4 mx-auto">
+      <svg class="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+      </svg>
+    </div>
+    <h3 class="text-base font-semibold text-red-800 mb-2">Cannot deactivate last rubric</h3>
+    <p class="text-sm text-red-600 mb-6">
+      <strong>{{ rubric.name }}</strong> is the only active rubric for {{ rubric.subject.name }}.
+      At least one rubric must remain active per subject.
+    </p>
+    <a href="{{ url_for('admin.rubrics', subject_id=rubric.subject_id) }}"
+       class="rounded-lg border border-red-200 bg-white px-5 py-2 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors">
+      ← Back to Rubrics
+    </a>
+  </div>
+
+  {% else %}
+  <!-- Confirm deactivation -->
+  <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div class="px-8 py-6 border-b border-slate-100">
+      <div class="flex items-center gap-3 mb-1">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+          <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-slate-800">Deactivate "{{ rubric.name }}"?</h3>
+          <p class="text-xs text-slate-400">{{ rubric.subject.name }} · {{ rubric.subject.grade }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-8 py-6 space-y-4">
+      {% if entry_count > 0 %}
+      <div class="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+        <svg class="h-4 w-4 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 0v.008m9-3.758a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+        <p class="text-sm text-amber-800">
+          This rubric has <strong>{{ entry_count }} ranking{{ 's' if entry_count != 1 }}</strong> recorded against it.
+          Deactivating will hide it from new entries but <strong>all historical data is preserved</strong>.
+        </p>
+      </div>
+      {% endif %}
+
+      <ul class="space-y-2 text-sm text-slate-600">
+        <li class="flex items-start gap-2">
+          <svg class="h-4 w-4 text-slate-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+          Hidden from the entry form going forward
+        </li>
+        <li class="flex items-start gap-2">
+          <svg class="h-4 w-4 text-green-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          Historical rankings and student history remain intact
+        </li>
+        <li class="flex items-start gap-2">
+          <svg class="h-4 w-4 text-green-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          Can be reactivated at any time
+        </li>
+      </ul>
+    </div>
+
+    <div class="px-8 py-5 border-t border-slate-100 flex items-center justify-between">
+      <a href="{{ url_for('admin.rubrics', subject_id=rubric.subject_id) }}"
+         class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+        Cancel
+      </a>
+      <form method="POST">
+        <button type="submit"
+                class="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors">
+          Deactivate Rubric
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

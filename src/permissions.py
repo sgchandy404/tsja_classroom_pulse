@@ -19,7 +19,7 @@ import datetime
 from functools import wraps
 from flask import abort
 from flask_login import current_user
-from models import db, AcademicYear, AppConfig, AuditLog, WeeklyEntry
+from models import db, AcademicYear, AppConfig, AuditLog, FortnightEntry
 
 
 def _active_terms():
@@ -28,10 +28,10 @@ def _active_terms():
     return ay.terms if ay else []
 
 
-def _term_for_entry(entry: WeeklyEntry):
-    """Find the Term that contains this entry's week, or None."""
+def _term_for_entry(entry: FortnightEntry):
+    """Find the Term that contains this entry's fortnight, or None."""
     for term in _active_terms():
-        if term.contains_week(entry.iso_week, entry.iso_year):
+        if term.contains_fortnight(entry.ft_year, entry.ft_month, entry.ft_period):
             return term
     return None
 
@@ -145,14 +145,14 @@ class Permissions:
         except (TypeError, ValueError):
             return 48
 
-    def within_grace_period(self, entry: WeeklyEntry) -> bool:
+    def within_grace_period(self, entry: FortnightEntry) -> bool:
         if not entry.created_at:
             return True  # legacy entries (no timestamp) — allow
         cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=self.grace_hours())
         return entry.created_at >= cutoff
 
-    def can_edit_entry(self, entry: WeeklyEntry) -> bool:
-        """Can this user edit an existing WeeklyEntry?"""
+    def can_edit_entry(self, entry: FortnightEntry) -> bool:
+        """Can this user edit an existing FortnightEntry?"""
         if self.is_admin:
             return True
         # Must be the original author
