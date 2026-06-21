@@ -81,19 +81,12 @@
     <p class="text-sm text-slate-400">Select a grade to begin.</p>
   </div>
 
-  <!-- Subject picker: grade selected but no subject yet -->
-  <div x-show="!loading && grade && !subjectId && subjects.length > 0" class="mb-6">
-    <p class="text-xs text-slate-400 mb-3">Pick a subject to get started</p>
-    <div class="flex flex-wrap gap-2">
-      <template x-for="s in subjects" :key="s.id">
-        <button
-          @click="subjectId = String(s.id); subjectName = s.name; onSubjectChange()"
-          class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700
-                 shadow-sm hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 transition-colors"
-          x-text="s.name"
-        ></button>
-      </template>
-    </div>
+  <!-- Empty: grade selected but no subject yet -->
+  <div
+    x-show="!loading && grade && !subjectId"
+    class="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-slate-200 gap-2"
+  >
+    <p class="text-sm text-slate-400">Choose a subject from the dropdown above.</p>
   </div>
 
   <!-- Empty: subject selected but no students -->
