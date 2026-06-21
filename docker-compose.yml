@@ -1,0 +1,35 @@
+services:
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # SQLite stored on the host-mounted volume — survives rebuilds
+      DATABASE_URL: sqlite:////data/database.db
+      # Override SECRET_KEY and ADMIN_PASSWORD via a .env file on the host
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
+    volumes:
+      - ./data:/data
+    networks:
+      - internal
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Certbot will add letsencrypt mounts here when SSL is set up
+    depends_on:
+      - app
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

@@ -282,6 +282,50 @@ docker compose up -d --build
 
 ---
 
+### Running with Docker
+
+**Quick start (server or local):**
+
+```bash
+# 1. Create a .env file — this is gitignored and must exist on every environment
+cp .env.example .env
+# Edit .env and set a strong SECRET_KEY
+
+# 2. Build and start
+docker compose up -d --build
+
+# App is now accessible at http://<host-ip>
+```
+
+**SQLite persistence:**
+
+The database lives at `./data/database.db` on the host (bind-mounted into the container at `/data/database.db`). It survives `docker compose up --build` and container recreation. Back up the `./data/` directory regularly.
+
+```bash
+# Manual backup
+cp -r ./data/ ./data-backup-$(date +%Y%m%d)/
+```
+
+**Environment / secrets:**
+
+`.env` is gitignored and will **not** come from the repo. It must be created manually on each server:
+
+```bash
+cp .env.example .env
+# Then edit: set SECRET_KEY, ADMIN_PASSWORD, etc.
+```
+
+**Useful commands:**
+
+```bash
+docker compose logs -f app       # tail app logs
+docker compose logs -f nginx     # tail nginx logs
+docker compose down              # stop (data volume preserved)
+docker compose up -d --build     # rebuild and restart
+```
+
+---
+
 ## Contributing
 
 This is a personal project built for a specific school context and is not currently open to external contributions. Feel free to fork it and adapt it for your own use under the terms of the [MIT License](LICENSE).

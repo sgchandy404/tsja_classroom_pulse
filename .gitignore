@@ -1,8 +1,13 @@
 # Environment
 .env
+.env.*
 
 # Database
 src/instance/
+data/
+*.db
+*.sqlite
+*.sqlite3
 
 # Python
 __pycache__/
@@ -18,6 +23,9 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker local overrides
+docker-compose.override.yml
 
 # Editor
 .vscode/
