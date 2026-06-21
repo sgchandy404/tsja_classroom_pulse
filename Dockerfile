@@ -13,4 +13,4 @@ RUN mkdir -p /data
 EXPOSE 8000
 
 WORKDIR /app/src
-CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-", "src.app:app"]
