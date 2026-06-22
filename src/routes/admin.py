@@ -1143,3 +1143,225 @@ def reactivate_rubric(rubric_id):
     db.session.commit()
     flash(f"Rubric '{rubric.name}' reactivated.", "success")
     return redirect(url_for("admin.rubrics", subject_id=rubric.subject_id))
+
+
+@admin_bp.route("/rubrics/import", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def import_rubrics():
+    all_grades = _all_grades()
+    # subjects_by_grade: {grade: [{id, name}, ...]}
+    all_subjects = Subject.query.filter_by(is_active=True).order_by(Subject.grade, Subject.name).all()
+    subjects_by_grade = {}
+    for s in all_subjects:
+        subjects_by_grade.setdefault(s.grade, []).append({"id": s.id, "name": s.name})
+
+    if request.method == "GET":
+        return render_template("admin/import_rubrics.html",
+                               all_grades=all_grades,
+                               subjects_by_grade=subjects_by_grade,
+                               preselect_grade=request.args.get("grade", ""),
+                               preselect_subject=request.args.get("subject_id", ""))
+
+    grade = request.form.get("grade", "").strip()
+    subject_id_raw = request.form.get("subject_id", "").strip()
+
+    if not grade or not subject_id_raw:
+        flash("Please select a grade and subject.", "error")
+        return render_template("admin/import_rubrics.html",
+                               all_grades=all_grades, subjects_by_grade=subjects_by_grade,
+                               preselect_grade=grade, preselect_subject=subject_id_raw)
+
+    try:
+        subject_id = int(subject_id_raw)
+    except ValueError:
+        abort(400)
+
+    subj = db.session.get(Subject, subject_id)
+    if not subj or subj.grade != grade:
+        abort(400)
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("No file selected.", "error")
+        return render_template("admin/import_rubrics.html",
+                               all_grades=all_grades, subjects_by_grade=subjects_by_grade,
+                               preselect_grade=grade, preselect_subject=subject_id_raw)
+
+    try:
+        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    except Exception:
+        flash("Could not read the file. Please upload a valid .xlsx file.", "error")
+        return render_template("admin/import_rubrics.html",
+                               all_grades=all_grades, subjects_by_grade=subjects_by_grade,
+                               preselect_grade=grade, preselect_subject=subject_id_raw)
+
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+
+    existing_names = {
+        r.name.strip().lower()
+        for r in Rubric.query.filter_by(subject_id=subject_id).all()
+    }
+    next_order = _next_display_order(subject_id)
+
+    succeeded = []
+    failed = []
+    seen_in_file = {}
+
+    for idx, row in enumerate(rows, start=2):
+        name = str(row[0]).strip() if row[0] is not None else ""
+        req_raw = str(row[1]).strip().upper() if len(row) > 1 and row[1] is not None else ""
+
+        if not name and not req_raw:
+            continue  # blank row
+
+        row_errors = []
+
+        if not name:
+            row_errors.append("Rubric Name is required")
+
+        if req_raw not in ("Y", "N"):
+            row_errors.append(f"Required must be Y or N (got '{req_raw or '(blank)'}')")
+
+        name_lower = name.lower() if name else ""
+        if name and name_lower in existing_names:
+            row_errors.append(f"'{name}' already exists in {subj.name} ({grade})")
+        elif name and name_lower in seen_in_file:
+            row_errors.append(
+                f"'{name}' duplicated in this file (first seen row {seen_in_file[name_lower]})"
+            )
+
+        if row_errors:
+            failed.append({"row": idx, "name": name or "(blank)", "req": req_raw, "reasons": row_errors})
+            continue
+
+        seen_in_file[name_lower] = idx
+        existing_names.add(name_lower)
+        rubric = Rubric(
+            subject_id=subject_id,
+            name=name,
+            is_required=(req_raw == "Y"),
+            is_active=True,
+            display_order=next_order,
+        )
+        next_order += 1
+        db.session.add(rubric)
+        succeeded.append(name)
+
+    if succeeded:
+        log_audit(
+            user=current_user, action="create", model_name="Rubric", record_id=0,
+            field_name="bulk_import",
+            new_value=f"{len(succeeded)} rubrics imported into {subj.name} ({grade}); {len(failed)} failed",
+            note=f"File: {file.filename}",
+        )
+        db.session.commit()
+
+    if succeeded and not failed:
+        flash(f"Imported {len(succeeded)} rubric(s) into {subj.name}.", "success")
+    elif succeeded and failed:
+        flash(f"Imported {len(succeeded)} rubric(s). {len(failed)} row(s) had errors.", "warning")
+    else:
+        flash(f"No rubrics imported. {len(failed)} row(s) had errors.", "error")
+
+    return render_template("admin/import_rubrics.html",
+                           all_grades=all_grades, subjects_by_grade=subjects_by_grade,
+                           preselect_grade=grade, preselect_subject=subject_id_raw,
+                           failed_rows=failed)
+
+
+@admin_bp.route("/rubrics/export")
+@login_required
+@require_role("admin", "incharge", "coordinator", "teacher")
+def export_rubrics():
+    p = get_perms()
+    grade_filter = request.args.get("grade", "").strip()
+    subject_id_raw = request.args.get("subject_id", "").strip()
+    is_template = request.args.get("template") == "1"
+
+    # Determine allowed (grade, subject_id) pairs
+    if p.is_admin or p.can_view_all:
+        allowed_pairs = None  # no restriction
+    else:
+        allowed_pairs = p.enterable_pairs() or set()
+
+    # Build rubric query
+    q = Rubric.query.join(Subject)
+    if subject_id_raw:
+        try:
+            sid = int(subject_id_raw)
+        except ValueError:
+            abort(400)
+        subj = db.session.get(Subject, sid)
+        if not subj:
+            abort(404)
+        if allowed_pairs is not None and (subj.grade, sid) not in allowed_pairs:
+            abort(403)
+        q = q.filter(Rubric.subject_id == sid)
+    elif grade_filter:
+        if allowed_pairs is not None:
+            allowed_sids = {sid for (g, sid) in allowed_pairs if g == grade_filter}
+            if not allowed_sids:
+                abort(403)
+            q = q.filter(Subject.grade == grade_filter, Rubric.subject_id.in_(allowed_sids))
+        else:
+            q = q.filter(Subject.grade == grade_filter)
+    elif allowed_pairs is not None:
+        allowed_sids = {sid for (_, sid) in allowed_pairs}
+        q = q.filter(Rubric.subject_id.in_(allowed_sids))
+
+    rubrics_qs = q.order_by(Subject.grade, Subject.name, Rubric.display_order, Rubric.id).all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Rubrics"
+    bold = openpyxl.styles.Font(bold=True)
+
+    if is_template:
+        for col, h in enumerate(["Rubric Name", "Required (Y/N)"], 1):
+            ws.cell(row=1, column=col, value=h).font = bold
+        hint_font = openpyxl.styles.Font(italic=True, color="999999")
+        ws.cell(row=2, column=1, value="e.g. Logical Reasoning").font = hint_font
+        ws.cell(row=2, column=2, value="Y").font = hint_font
+        ws.column_dimensions["A"].width = 35
+        ws.column_dimensions["B"].width = 16
+    else:
+        headers = ["Rubric Name", "Subject", "Grade", "Required (Y/N)", "Status", "Display Order"]
+        for col, h in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=h).font = bold
+        for ri, r in enumerate(rubrics_qs, 2):
+            ws.cell(row=ri, column=1, value=r.name)
+            ws.cell(row=ri, column=2, value=r.subject.name)
+            ws.cell(row=ri, column=3, value=r.subject.grade)
+            ws.cell(row=ri, column=4, value="Y" if r.is_required else "N")
+            ws.cell(row=ri, column=5, value="Active" if r.is_active else "Inactive")
+            ws.cell(row=ri, column=6, value=r.display_order)
+        for col, width in zip("ABCDEF", [35, 25, 18, 16, 14, 14]):
+            ws.column_dimensions[col].width = width
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    if subject_id_raw and not is_template:
+        subj = db.session.get(Subject, int(subject_id_raw))
+        label = f"{subj.grade.replace(' ','_')}_{subj.name.replace(' ','_')}" if subj else "Unknown"
+    elif grade_filter:
+        label = grade_filter.replace(" ", "_")
+    else:
+        label = "All"
+
+    filename = (f"TEMPLATE_Rubrics_{label}.xlsx" if is_template
+                else f"Rubrics_{label}.xlsx")
+
+    if not is_template:
+        log_audit(
+            user=current_user, action="create", model_name="Rubric", record_id=0,
+            field_name="export",
+            new_value=f"Exported {len(rubrics_qs)} rubrics ({label})",
+        )
+        db.session.commit()
+
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
