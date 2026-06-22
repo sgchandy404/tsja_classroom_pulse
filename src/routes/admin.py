@@ -372,6 +372,131 @@ def reactivate_grade(grade_id):
     return redirect(url_for("admin.grades"))
 
 
+@admin_bp.route("/grades/import", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def import_grades():
+    if request.method == "GET":
+        return render_template("admin/import_grades.html")
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("No file selected.", "error")
+        return render_template("admin/import_grades.html")
+
+    try:
+        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    except Exception:
+        flash("Could not read the file. Please upload a valid .xlsx file.", "error")
+        return render_template("admin/import_grades.html")
+
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+
+    existing_names = {g.name.strip().lower() for g in Grade.query.all()}
+
+    succeeded = []
+    failed = []
+    seen_in_file = {}
+
+    for idx, row in enumerate(rows, start=2):
+        name = str(row[0]).strip() if row[0] is not None else ""
+
+        if not name:
+            continue
+
+        row_errors = []
+        name_lower = name.lower()
+
+        if name_lower in existing_names:
+            row_errors.append(f"'{name}' already exists")
+        elif name_lower in seen_in_file:
+            row_errors.append(
+                f"'{name}' duplicated in this file (first seen row {seen_in_file[name_lower]})"
+            )
+
+        if row_errors:
+            failed.append({"row": idx, "name": name, "reasons": row_errors})
+            continue
+
+        seen_in_file[name_lower] = idx
+        existing_names.add(name_lower)
+        grade = Grade(name=name, is_active=True)
+        db.session.add(grade)
+        succeeded.append(name)
+
+    if succeeded:
+        db.session.flush()
+        log_audit(
+            user=current_user, action="create", model_name="Grade", record_id=0,
+            field_name="bulk_import",
+            new_value=f"{len(succeeded)} grades imported; {len(failed)} failed",
+            note=f"File: {file.filename}",
+        )
+        db.session.commit()
+
+    if succeeded and not failed:
+        flash(f"Imported {len(succeeded)} grade(s) successfully.", "success")
+    elif succeeded and failed:
+        flash(f"Imported {len(succeeded)} grade(s). {len(failed)} row(s) had errors.", "warning")
+    else:
+        flash(f"No grades imported. {len(failed)} row(s) had errors.", "error")
+
+    return render_template("admin/import_grades.html",
+                           succeeded=succeeded, failed_rows=failed)
+
+
+@admin_bp.route("/grades/export")
+@login_required
+@require_role("admin", "incharge", "coordinator", "teacher")
+def export_grades():
+    p = get_perms()
+
+    if p.is_admin or p.can_view_all:
+        all_grades = Grade.query.order_by(Grade.name).all()
+    else:
+        visible = p.visible_grades() or set()
+        all_grades = Grade.query.filter(Grade.name.in_(visible)).order_by(Grade.name).all()
+
+    is_template = request.args.get("template") == "1"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Grades"
+    bold = openpyxl.styles.Font(bold=True)
+
+    if is_template:
+        ws.cell(row=1, column=1, value="Grade Name").font = bold
+        hint_font = openpyxl.styles.Font(italic=True, color="999999")
+        ws.cell(row=2, column=1, value="e.g. Grade 9A").font = hint_font
+        ws.column_dimensions["A"].width = 25
+    else:
+        for col, h in enumerate(["Grade Name", "Status"], 1):
+            ws.cell(row=1, column=col, value=h).font = bold
+        for ri, g in enumerate(all_grades, 2):
+            ws.cell(row=ri, column=1, value=g.name)
+            ws.cell(row=ri, column=2, value="Active" if g.is_active else "Inactive")
+        ws.column_dimensions["A"].width = 25
+        ws.column_dimensions["B"].width = 14
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = "TEMPLATE_Grades.xlsx" if is_template else "Grades_Export.xlsx"
+
+    if not is_template:
+        log_audit(
+            user=current_user, action="create", model_name="Grade", record_id=0,
+            field_name="export",
+            new_value=f"Exported {len(all_grades)} grades",
+        )
+        db.session.commit()
+
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
 # ---------------------------------------------------------------------------
 # Routes: subject management (admin only)
 # ---------------------------------------------------------------------------
