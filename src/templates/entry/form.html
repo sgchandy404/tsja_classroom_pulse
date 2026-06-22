@@ -377,6 +377,9 @@ function entryForm() {
             this.subjectName = match.name;
             this.rubrics     = match.rubrics;
             await this.loadStudentsAndExisting();
+            // Import just saved to server — draft is stale, clear it
+            localStorage.removeItem(this.draftKey());
+            this.draftRestored = 0;
           }
         }
       }

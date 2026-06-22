@@ -376,9 +376,10 @@ def import_rankings():
     period_label = fortnight_label(ft_year, ft_month, ft_period)
     complete_count = len(student_ids) - len(students_incomplete)
     if saved:
-        flash(f"Imported rankings for {complete_count} of {len(student_ids)} students · {subject.name} · {period_label}.", "success")
-    if students_incomplete:
-        flash(f"{len(students_incomplete)} student(s) still have incomplete required rubrics - finish them manually.", "warning")
+        msg = f"Imported rankings for {complete_count} of {len(student_ids)} students · {subject.name} · {period_label}."
+        if students_incomplete:
+            msg += f" {len(students_incomplete)} student(s) still need required rubrics - finish them manually."
+        flash(msg, "success" if not students_incomplete else "warning")
     if invalid:
         flash(f"{invalid} cell(s) had unrecognised values and were skipped.", "error")
 
