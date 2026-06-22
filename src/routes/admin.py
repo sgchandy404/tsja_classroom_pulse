@@ -355,6 +355,46 @@ def deactivate_grade(grade_id):
                            entry_count=entry_count)
 
 
+@admin_bp.route("/grades/<int:grade_id>/delete", methods=["POST"])
+@login_required
+@require_role("admin")
+def delete_grade(grade_id):
+    """Hard-delete a grade and cascade-remove its subjects, rubrics, and role assignments.
+    Refused if the grade has any students (they may carry entry data)."""
+    grade = db.session.get(Grade, grade_id)
+    if not grade:
+        abort(404)
+    student_count = Student.query.filter_by(grade=grade.name).count()
+    if student_count > 0:
+        flash(
+            f"Cannot delete '{grade.name}' — it has {student_count} student(s) with possible entry data. "
+            "Deactivate it instead, or remove the students first.",
+            "error",
+        )
+        next_url = request.form.get("next") or url_for("admin.grades")
+        return redirect(next_url)
+
+    name = grade.name
+    subjects = Subject.query.filter_by(grade=name).all()
+    subject_ids = [s.id for s in subjects]
+
+    # Cascade: rubrics → user role assignments → subjects → grade
+    if subject_ids:
+        Rubric.query.filter(Rubric.subject_id.in_(subject_ids)).delete(synchronize_session=False)
+        UserRole.query.filter(UserRole.subject_id.in_(subject_ids)).delete(synchronize_session=False)
+    UserRole.query.filter_by(grade=name).delete(synchronize_session=False)
+    Subject.query.filter_by(grade=name).delete(synchronize_session=False)
+    db.session.delete(grade)
+
+    log_audit(user=current_user, action="delete", model_name="Grade",
+              record_id=grade_id, field_name="name", old_value=name,
+              note=f"Cascade-deleted grade with {len(subject_ids)} subject(s)")
+    db.session.commit()
+    next_url = request.form.get("next") or url_for("admin.grades")
+    flash(f"Grade '{name}' and all its subjects and rubrics have been deleted.", "success")
+    return redirect(next_url)
+
+
 @admin_bp.route("/grades/<int:grade_id>/reactivate", methods=["POST"])
 @login_required
 @require_role("admin")
@@ -495,6 +535,257 @@ def export_grades():
 
     return send_file(buf, as_attachment=True, download_name=filename,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@admin_bp.route("/grades/composite-import", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def composite_import_grade():
+    """Single-file composite import: creates one Grade + its Subjects + their Rubrics atomically."""
+    if request.method == "GET":
+        return render_template("admin/composite_import_grade.html",
+                               from_wizard=request.args.get("wizard") == "1")
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("No file selected.", "error")
+        return render_template("admin/composite_import_grade.html",
+                               from_wizard=request.form.get("from_wizard") == "1")
+
+    from_wizard = request.form.get("from_wizard") == "1"
+
+    try:
+        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    except Exception:
+        flash("Could not read the file. Please upload a valid .xlsx file.", "error")
+        return render_template("admin/composite_import_grade.html", from_wizard=from_wizard)
+
+    errors = []  # collect ALL issues before stopping
+    conflicting_grade = None  # set when "already exists" is the blocker
+
+    # ── Sheet: Grade ──
+    if "Grade" not in wb.sheetnames:
+        errors.append("Missing sheet 'Grade'.")
+    else:
+        grade_rows = list(wb["Grade"].iter_rows(min_row=2, values_only=True))
+        grade_name = ""
+        for row in grade_rows:
+            v = str(row[0]).strip() if row[0] is not None else ""
+            if v:
+                grade_name = v
+                break
+        if not grade_name:
+            errors.append("Grade sheet: Grade Name is required.")
+        elif Grade.query.filter_by(name=grade_name).first():
+            errors.append(f"Grade sheet: '{grade_name}' already exists in the system.")
+            conflicting_grade = grade_name
+
+    # ── Sheet: Subjects ──
+    subject_names = []  # ordered, deduplicated after validation
+    if "Subjects" not in wb.sheetnames:
+        errors.append("Missing sheet 'Subjects'.")
+    else:
+        seen_subj = {}
+        for idx, row in enumerate(wb["Subjects"].iter_rows(min_row=2, values_only=True), start=2):
+            name = str(row[0]).strip() if row[0] is not None else ""
+            if not name:
+                continue
+            name_lower = name.lower()
+            if name_lower in seen_subj:
+                errors.append(
+                    f"Subjects sheet row {idx}: '{name}' duplicates row {seen_subj[name_lower]}."
+                )
+            else:
+                seen_subj[name_lower] = idx
+                subject_names.append(name)
+        if not subject_names and not errors:
+            errors.append("Subjects sheet: at least one subject is required.")
+
+    # ── Sheet: Rubrics ──
+    rubric_rows_parsed = []  # list of (subj_name, rubric_name, is_required)
+    if "Rubrics" not in wb.sheetnames:
+        errors.append("Missing sheet 'Rubrics'.")
+    else:
+        subj_name_set = {s.lower() for s in subject_names}
+        seen_rubrics = {}  # (subj_lower, rubric_lower) → row
+        for idx, row in enumerate(wb["Rubrics"].iter_rows(min_row=2, values_only=True), start=2):
+            subj_ref = str(row[0]).strip() if row[0] is not None else ""
+            rub_name = str(row[1]).strip() if len(row) > 1 and row[1] is not None else ""
+            req_raw  = str(row[2]).strip().upper() if len(row) > 2 and row[2] is not None else ""
+
+            if not subj_ref and not rub_name and not req_raw:
+                continue  # blank row
+
+            row_errors = []
+            if not subj_ref:
+                row_errors.append("Subject Name is required")
+            elif subj_ref.lower() not in subj_name_set:
+                row_errors.append(
+                    f"Subject '{subj_ref}' is not defined in the Subjects sheet of this file"
+                )
+            if not rub_name:
+                row_errors.append("Rubric Name is required")
+            if req_raw not in ("Y", "N"):
+                row_errors.append(f"Required must be Y or N (got '{req_raw or '(blank)'}')")
+
+            if not row_errors and rub_name:
+                key = (subj_ref.lower(), rub_name.lower())
+                if key in seen_rubrics:
+                    row_errors.append(
+                        f"Rubric '{rub_name}' under '{subj_ref}' duplicates row {seen_rubrics[key]}"
+                    )
+                else:
+                    seen_rubrics[key] = idx
+
+            if row_errors:
+                errors.append(f"Rubrics sheet row {idx}: {'; '.join(row_errors)}.")
+            else:
+                rubric_rows_parsed.append((subj_ref, rub_name, req_raw == "Y"))
+
+    if errors:
+        conflicting_grade_obj = Grade.query.filter_by(name=conflicting_grade).first() if conflicting_grade else None
+        return render_template("admin/composite_import_grade.html",
+                               from_wizard=from_wizard, errors=errors,
+                               conflicting_grade=conflicting_grade,
+                               conflicting_grade_obj=conflicting_grade_obj)
+
+    # ── All valid — create in one transaction ──
+    new_grade = Grade(name=grade_name, is_active=True)
+    db.session.add(new_grade)
+    db.session.flush()
+
+    subj_map = {}  # name_lower → Subject obj
+    for order, sname in enumerate(subject_names):
+        s = Subject(name=sname, grade=grade_name, is_active=True)
+        db.session.add(s)
+        db.session.flush()
+        subj_map[sname.lower()] = s
+
+    rubric_order = {}  # subject_id → next display_order
+    for sname, rname, is_req in rubric_rows_parsed:
+        subj = subj_map[sname.lower()]
+        order = rubric_order.get(subj.id, 1)
+        r = Rubric(
+            subject_id=subj.id,
+            name=rname,
+            is_required=is_req,
+            is_active=True,
+            display_order=order,
+        )
+        db.session.add(r)
+        rubric_order[subj.id] = order + 1
+
+    log_audit(
+        user=current_user, action="create", model_name="Grade", record_id=new_grade.id,
+        field_name="composite_import",
+        new_value=(
+            f"Grade '{grade_name}' created with {len(subject_names)} subject(s) "
+            f"and {len(rubric_rows_parsed)} rubric(s)"
+        ),
+        note=f"File: {file.filename}",
+    )
+    db.session.commit()
+
+    flash(
+        f"'{grade_name}' created with {len(subject_names)} subject(s) "
+        f"and {len(rubric_rows_parsed)} rubric(s).",
+        "success",
+    )
+
+    if from_wizard:
+        return redirect(url_for("admin.setup_grade_wizard", grade=grade_name, step="teachers"))
+    return redirect(url_for("admin.grades"))
+
+
+@admin_bp.route("/grades/composite-template")
+@login_required
+@require_role("admin")
+def composite_import_template():
+    """Download the 3-sheet composite template."""
+    wb = openpyxl.Workbook()
+    bold = openpyxl.styles.Font(bold=True)
+    hint = openpyxl.styles.Font(italic=True, color="999999")
+
+    # Sheet 1: Grade
+    ws_g = wb.active
+    ws_g.title = "Grade"
+    ws_g.cell(row=1, column=1, value="Grade Name").font = bold
+    ws_g.cell(row=2, column=1, value="e.g. Grade 9A").font = hint
+    ws_g.column_dimensions["A"].width = 25
+
+    # Sheet 2: Subjects
+    ws_s = wb.create_sheet("Subjects")
+    ws_s.cell(row=1, column=1, value="Subject Name").font = bold
+    ws_s.cell(row=2, column=1, value="e.g. Mathematics").font = hint
+    ws_s.column_dimensions["A"].width = 30
+
+    # Sheet 3: Rubrics
+    ws_r = wb.create_sheet("Rubrics")
+    for col, h in enumerate(["Subject Name", "Rubric Name", "Required (Y/N)"], 1):
+        ws_r.cell(row=1, column=col, value=h).font = bold
+    ws_r.cell(row=2, column=1, value="e.g. Mathematics").font = hint
+    ws_r.cell(row=2, column=2, value="e.g. Logical Reasoning").font = hint
+    ws_r.cell(row=2, column=3, value="Y").font = hint
+    ws_r.column_dimensions["A"].width = 30
+    ws_r.column_dimensions["B"].width = 35
+    ws_r.column_dimensions["C"].width = 16
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True,
+                     download_name="TEMPLATE_New_Grade_Setup.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@admin_bp.route("/grades/setup-wizard", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def setup_grade_wizard():
+    """Multi-step wizard for setting up a new grade end-to-end."""
+    grade_name = request.args.get("grade", "").strip()
+    step = request.args.get("step", "structure")
+
+    grade = Grade.query.filter_by(name=grade_name).first() if grade_name else None
+    subjects = Subject.query.filter_by(grade=grade_name, is_active=True).order_by(Subject.name).all() if grade else []
+    active_grades = _all_grades()
+    all_users = User.query.filter_by(active=True).order_by(User.username).all()
+    users_data = [{"id": u.id, "name": u.username} for u in all_users]
+
+    # Current teacher assignments: subject_id → [user_id, ...]
+    current_assignments: dict = {}
+    if grade:
+        for subj in subjects:
+            rows = UserRole.query.filter_by(role="teacher", grade=grade_name, subject_id=subj.id).all()
+            current_assignments[subj.id] = [r.user_id for r in rows]
+
+    if request.method == "POST" and step == "teachers" and grade:
+        UserRole.query.filter_by(role="teacher", grade=grade_name).filter(
+            UserRole.subject_id.in_([s.id for s in subjects])
+        ).delete(synchronize_session=False)
+
+        for subj in subjects:
+            for uid_str in request.form.getlist(f"teacher_{subj.id}"):
+                try:
+                    db.session.add(UserRole(user_id=int(uid_str), role="teacher",
+                                           grade=grade_name, subject_id=subj.id))
+                except ValueError:
+                    pass
+
+        db.session.commit()
+        log_audit(user=current_user, action="edit", model_name="UserRole",
+                  record_id=0, note=f"Wizard: teacher assignments saved for {grade_name}")
+        return redirect(url_for("admin.setup_grade_wizard", grade=grade_name, step="students"))
+
+    return render_template("admin/setup_grade_wizard.html",
+                           grade=grade,
+                           grade_name=grade_name,
+                           step=step,
+                           subjects=subjects,
+                           active_grades=active_grades,
+                           all_users=all_users,
+                           users_data=users_data,
+                           current_assignments=current_assignments)
 
 
 # ---------------------------------------------------------------------------

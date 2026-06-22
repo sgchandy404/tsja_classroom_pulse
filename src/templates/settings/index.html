@@ -4,71 +4,124 @@
 {% block page_title %}Settings{% endblock %}
 
 {% block header_actions %}
-  <div class="flex items-center gap-2">
-    <a href="{{ url_for('admin.config') }}"
-       class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm
-              hover:border-slate-300 hover:text-slate-800 transition-colors">
-      ⚙ App Config
-    </a>
-    <a href="{{ url_for('settings.new_year') }}"
-       class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
-              hover:bg-indigo-500 transition-colors">
-      + New Academic Year
-    </a>
-  </div>
+  <a href="{{ url_for('settings.new_year') }}"
+     class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
+            hover:bg-indigo-500 transition-colors">
+    + New Academic Year
+  </a>
 {% endblock %}
 
 {% block content %}
+<div class="max-w-2xl space-y-8">
 
-<h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Academic Years</h2>
+  {# ── Academic Years ── #}
+  <section>
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Academic Years</h2>
 
-{% if years %}
-<div class="space-y-3">
-  {% for ay in years %}
-  <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-    <div class="flex items-center gap-4">
-      <div>
-        <p class="text-sm font-semibold text-slate-800">{{ ay.label }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">{{ ay.terms | length }} terms configured</p>
+    {% if years %}
+    <div class="space-y-3">
+      {% for ay in years %}
+      {% set is_active = ay.is_active %}
+      <div class="rounded-2xl border {% if is_active %}border-indigo-200 bg-indigo-50/40{% else %}border-slate-200 bg-white{% endif %} shadow-sm overflow-hidden">
+
+        {# Header row #}
+        <div class="flex items-center justify-between px-5 py-4">
+          <div class="flex items-center gap-3">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl
+                        {% if is_active %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-500{% endif %}">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-bold text-slate-800">{{ ay.label }}</p>
+                {% if is_active %}
+                <span class="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                  <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>Current
+                </span>
+                {% endif %}
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">{{ ay.terms | length }} terms · April {{ ay.start_year }} – March {{ ay.end_year }}</p>
+            </div>
+          </div>
+          <a href="{{ url_for('settings.edit_year', year_id=ay.id) }}"
+             class="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600
+                    hover:border-slate-300 hover:text-slate-800 shadow-sm transition-colors">
+            Edit
+          </a>
+        </div>
+
+        {# Term pills row #}
+        {% if ay.terms %}
+        <div class="flex flex-wrap gap-2 px-5 pb-4">
+          {% for t in ay.terms %}
+          <div class="flex items-center gap-1.5 rounded-lg border {% if t.is_locked %}border-red-100 bg-red-50{% else %}border-slate-100 bg-slate-50{% endif %} px-3 py-1.5">
+            <span class="text-xs font-semibold {% if t.is_locked %}text-red-700{% else %}text-slate-700{% endif %}">{{ t.name }}</span>
+            <span class="text-[10px] text-slate-400">
+              {% if t.start_date and t.end_date %}
+                {{ t.start_date.strftime('%d %b').lstrip('0') }} – {{ t.end_date.strftime('%d %b %Y').lstrip('0') }}
+              {% else %}
+                Not set
+              {% endif %}
+            </span>
+            {% if t.is_locked %}
+            <svg class="h-3 w-3 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
       </div>
-      {% if ay.is_active %}
-        <span class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-200">
-          Active
-        </span>
-      {% endif %}
+      {% endfor %}
     </div>
 
-    <div class="flex items-center gap-3">
-      <!-- Term summary pills -->
-      <div class="hidden sm:flex items-center gap-2">
-        {% for t in ay.terms %}
-          <span class="text-xs text-slate-500 bg-slate-100 rounded-md px-2 py-0.5">
-            {{ t.name }}:
-            {% if t.start_date %}{{ t.start_date.strftime('%d/%m/%Y') }}{% endif %}
-            –
-            {% if t.end_date %}{{ t.end_date.strftime('%d/%m/%Y') }}{% endif %}
-          </span>
-        {% endfor %}
-      </div>
-
-      <a href="{{ url_for('settings.edit_year', year_id=ay.id) }}"
-         class="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-medium text-slate-600
-                hover:border-slate-300 hover:text-slate-800 transition-colors">
-        Edit
+    {% else %}
+    <div class="flex flex-col items-center justify-center h-48 rounded-2xl border-2 border-dashed border-slate-200">
+      <svg class="h-8 w-8 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+      </svg>
+      <p class="text-sm font-medium text-slate-500">No academic years configured yet.</p>
+      <a href="{{ url_for('settings.new_year') }}"
+         class="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-500">
+        Create your first academic year →
       </a>
     </div>
-  </div>
-  {% endfor %}
-</div>
+    {% endif %}
+  </section>
 
-{% else %}
-  <div class="flex flex-col items-center justify-center h-56 rounded-xl border-2 border-dashed border-slate-200">
-    <p class="text-sm font-medium text-slate-500">No academic years configured yet.</p>
-    <a href="{{ url_for('settings.new_year') }}"
-       class="mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-500">
-      Create your first academic year →
+  {# ── App Configuration ── #}
+  <section>
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">App Configuration</h2>
+    <a href="{{ url_for('admin.config') }}"
+       class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm
+              hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors group">
+      <div class="flex items-center gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500
+                    group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors">App Config</p>
+          <p class="text-xs text-slate-400 mt-0.5">Grace period, global settings</p>
+        </div>
+      </div>
+      <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0"
+           fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+      </svg>
     </a>
-  </div>
-{% endif %}
+  </section>
 
+</div>
 {% endblock %}

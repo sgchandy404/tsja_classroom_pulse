@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Import New Grade Setup — Classroom Pulse{% endblock %}
+{% block page_title %}Import New Grade Setup{% endblock %}
+
+{% block head %}
+<script>
+function compositeImportWizard() {
+  return {
+    hasFile: false,
+    fileName: '',
+    onFile(e) {
+      const f = e.target.files[0];
+      this.hasFile = !!f;
+      this.fileName = f ? f.name : '';
+    }
+  };
+}
+</script>
+{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.grades') }}"
+     class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">
+    ← Back to Grades
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl space-y-5">
+
+  {# ── What this does ── #}
+  <div class="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-5 py-4">
+    <p class="text-sm font-semibold text-indigo-800 mb-1">One file, one grade, fully wired up</p>
+    <p class="text-xs text-indigo-600 leading-relaxed">
+      This import creates a Grade, its Subjects, and all Rubrics together in a single transaction.
+      Unlike the standalone imports, <strong>if anything fails, nothing is created</strong> — the whole
+      file is rejected so you can fix it and re-upload cleanly.
+    </p>
+  </div>
+
+  {# ── Validation error report ── #}
+  {% if errors %}
+  <div class="rounded-2xl border border-red-200 bg-white shadow-sm overflow-hidden">
+    <div class="flex items-center gap-3 border-b border-red-100 bg-red-50/70 px-5 py-3.5">
+      <svg class="h-4 w-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.948 3.374H4.645c-1.73 0-2.813-1.874-1.948-3.374l7.418-12.748c.866-1.5 3.032-1.5 3.898 0l6.875 11.748zM12 15.75h.007v.008H12v-.008z"/>
+      </svg>
+      <span class="text-sm font-semibold text-red-700">
+        {{ errors | length }} issue{{ 's' if errors | length != 1 }} found — nothing was created
+      </span>
+    </div>
+    <p class="px-5 py-3 text-xs text-slate-500 border-b border-slate-100 bg-slate-50/60">
+      Fix all issues below in your file, then re-upload. The entire import is rejected until the file is clean.
+    </p>
+    <ul class="divide-y divide-red-50">
+      {% for e in errors %}
+      <li class="flex gap-3 px-5 py-2.5">
+        <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400 mt-1.5"></span>
+        <span class="text-xs text-red-600">{{ e }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {# ── Conflict escape hatch ── #}
+    {% if conflicting_grade %}
+    <div class="border-t border-amber-100 bg-amber-50/60 px-5 py-4 space-y-3">
+      <p class="text-xs font-semibold text-amber-800">
+        "{{ conflicting_grade }}" was partially set up. What would you like to do?
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('admin.setup_grade_wizard', grade=conflicting_grade, step='structure') }}"
+           class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors">
+          Continue setting up "{{ conflicting_grade }}" →
+        </a>
+        {% if conflicting_grade_obj %}
+        <form method="POST" action="{{ url_for('admin.delete_grade', grade_id=conflicting_grade_obj.id) }}"
+              onsubmit="return confirm('This will permanently delete {{ conflicting_grade }} and all its subjects and rubrics. Students cannot be deleted this way.\n\nContinue?')">
+          <input type="hidden" name="next" value="{{ request.url }}">
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors">
+            Delete "{{ conflicting_grade }}" and re-import
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      <p class="text-[10px] text-amber-600">
+        Delete removes the grade, its subjects, rubrics, and teacher assignments — but not students.
+        If the grade has students, deactivate it instead.
+      </p>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  {# ── Upload form ── #}
+  <form method="POST" enctype="multipart/form-data"
+        x-data="compositeImportWizard()"
+        class="space-y-3">
+
+    {% if from_wizard %}
+    <input type="hidden" name="from_wizard" value="1">
+    {% endif %}
+
+    {# Step 1: Download template #}
+    <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 overflow-hidden">
+      <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-500">1</span>
+        <div>
+          <p class="text-sm font-semibold text-slate-800">Download the template</p>
+          <p class="text-xs text-slate-400 mt-0.5">Three sheets: Grade · Subjects · Rubrics</p>
+        </div>
+      </div>
+      <div class="px-5 py-4 space-y-3">
+        <a href="{{ url_for('admin.composite_import_template') }}"
+           class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3
+                  transition-colors hover:border-indigo-200 hover:bg-indigo-50 group">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm
+                       group-hover:border-indigo-200 transition-colors">
+            <svg class="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors"
+                 fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors">Download template</p>
+            <p class="text-xs text-slate-400 mt-0.5">TEMPLATE_New_Grade_Setup.xlsx</p>
+          </div>
+          <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-400 shrink-0"
+               fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+          </svg>
+        </a>
+
+        {# Sheet guide #}
+        <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Sheet guide</p>
+          {% for sheet, cols in [
+            ("Grade",    "Grade Name — one cell, the name of the new grade"),
+            ("Subjects", "Subject Name — one row per subject"),
+            ("Rubrics",  "Subject Name · Rubric Name · Required (Y/N) — subject name must match the Subjects sheet exactly"),
+          ] %}
+          <div class="flex gap-2 text-xs">
+            <span class="font-semibold text-slate-600 w-16 shrink-0">{{ sheet }}</span>
+            <span class="text-slate-400">{{ cols }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# Step 2: Upload #}
+    <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 overflow-hidden">
+      <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 transition-colors duration-300"
+           :class="hasFile ? 'bg-gradient-to-r from-indigo-50 to-white' : 'bg-gradient-to-r from-slate-50 to-white'">
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300"
+              :class="hasFile ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'">
+          <template x-if="hasFile">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+          </template>
+          <template x-if="!hasFile"><span>2</span></template>
+        </span>
+        <div>
+          <p class="text-sm font-semibold text-slate-800">Upload filled file</p>
+          <p class="text-xs mt-0.5 transition-colors"
+             :class="hasFile ? 'font-medium text-indigo-600' : 'text-slate-400'"
+             x-text="hasFile ? fileName : 'Choose your completed .xlsx file'"></p>
+        </div>
+      </div>
+      <div class="px-5 py-4">
+        <label class="group flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-6
+                      text-center transition-all"
+               :class="hasFile ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/60 hover:border-indigo-300 hover:bg-indigo-50/30'">
+          <template x-if="!hasFile">
+            <svg class="h-7 w-7 text-slate-300 group-hover:text-indigo-300 transition-colors"
+                 fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+            </svg>
+          </template>
+          <template x-if="hasFile">
+            <svg class="h-7 w-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </template>
+          <p class="text-sm font-medium transition-colors"
+             :class="hasFile ? 'text-indigo-700' : 'text-slate-400 group-hover:text-indigo-500'"
+             x-text="hasFile ? fileName : 'Click to choose file'"></p>
+          <p x-show="!hasFile" class="text-xs text-slate-300">.xlsx only · must have Grade, Subjects, Rubrics sheets</p>
+          <input type="file" name="file" accept=".xlsx" required class="sr-only" @change="onFile($event)">
+        </label>
+      </div>
+    </div>
+
+    {# Step 3: Import button #}
+    <div x-cloak x-show="hasFile"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0">
+      <button type="submit"
+              class="w-full rounded-2xl bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md
+                     hover:bg-indigo-500 active:scale-[0.99] transition-all">
+        Import Grade Setup
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
