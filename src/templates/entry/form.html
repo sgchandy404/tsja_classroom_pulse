@@ -361,8 +361,7 @@ function entryForm() {
             this.subjectId   = String(match.id);
             this.subjectName = match.name;
             this.rubrics     = match.rubrics;
-            await this.loadStudents();
-            await this.loadExisting();
+            await this.loadStudentsAndExisting();
           }
         }
       }
