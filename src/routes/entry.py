@@ -497,11 +497,9 @@ def submit():
     all_student_ids = {sid for (sid, _) in raw_entries}
     complete_count  = len(all_student_ids) - len(incomplete_students)
     if saved:
-        student_label = f"{len(students_saved)} student" + ("s" if len(students_saved) != 1 else "")
         flash(
-            f"Saved data for {student_label}. "
-            f"{complete_count} of {len(all_student_ids)} students fully complete for {period_label}.",
-            "success" if not incomplete_students else "warning"
+            f"Saved. {complete_count} of {len(all_student_ids)} students fully complete for {period_label}.",
+            "success" if not incomplete_students else "info"
         )
     if locked:
         flash(f"{locked} entry/entries were locked (grace period expired or term locked).", "error")

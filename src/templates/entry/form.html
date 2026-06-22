@@ -178,6 +178,7 @@
                   <span x-text="r.name"></span>
                   <span x-show="!r.is_required" class="ml-1 text-[10px] text-slate-400">(Optional)</span>
                 </label>
+                <!-- safelist: border-red-200 bg-red-50 text-red-700 border-blue-200 bg-blue-50 text-blue-700 border-green-200 bg-green-50 text-green-700 border-slate-200 bg-white text-slate-400 -->
                 <select
                   x-model="rankings[`${student.id}_${r.id}`]"
                   class="w-36 shrink-0 rounded-lg border px-2 py-1 text-xs
