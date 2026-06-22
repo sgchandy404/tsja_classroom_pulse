@@ -4,7 +4,7 @@
 {% block page_title %}Fortnight Entry{% endblock %}
 
 {% block content %}
-<div x-data="entryForm()" x-init="init('{{ selected_grade | e }}', {{ selected_subject_id or 'null' }})">
+<div x-data="entryForm()" x-init="init('{{ selected_grade | e }}', {{ selected_subject_id or 'null' }}, {{ 'true' if highlight_partial else 'false' }})">
 
   <!-- Controls bar -->
   <div class="flex flex-wrap items-end gap-4 mb-6 rounded-xl border border-slate-200 bg-white shadow-sm px-5 py-4">
@@ -162,10 +162,13 @@
     <!-- Cards grid -->
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <template x-for="student in students" :key="student.id">
-        <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div class="rounded-xl border bg-white shadow-sm overflow-hidden transition-all"
+             :class="isPartial(student) ? 'border-red-300 ring-2 ring-red-200 animate-pulse' : 'border-slate-200'"
+             :data-partial="isPartial(student)">
 
           <!-- Card header -->
-          <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+          <div class="flex items-center justify-between px-4 py-2.5 border-b transition-colors"
+               :class="isPartial(student) ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'">
             <span class="text-sm font-semibold text-slate-800" x-text="student.name"></span>
             <span class="font-mono text-xs text-slate-400" x-text="student.roll_number"></span>
           </div>
@@ -350,7 +353,13 @@ function entryForm() {
       return Object.keys(this.rankings).length > 0;
     },
 
-    async init(selectedGrade, selectedSubjectId) {
+    isPartial(student) {
+      const filledRequired  = this.rubrics.some(r => r.is_required && this.rankings[`${student.id}_${r.id}`]);
+      const missingRequired = this.rubrics.some(r => r.is_required && !this.rankings[`${student.id}_${r.id}`]);
+      return filledRequired && missingRequired;
+    },
+
+    async init(selectedGrade, selectedSubjectId, highlightPartial) {
       // Auto-save rankings to localStorage on every change
       this.$watch('rankings', val => {
         if (this.subjectId) {
@@ -381,6 +390,11 @@ function entryForm() {
             // Import just saved to server — draft is stale, clear it
             localStorage.removeItem(this.draftKey());
             this.draftRestored = 0;
+            if (highlightPartial) {
+              await this.$nextTick();
+              const first = document.querySelector('[data-partial="true"]');
+              if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
           }
         }
       }

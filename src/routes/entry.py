@@ -54,16 +54,18 @@ def form():
     today = datetime.date.today()
     cur_year, cur_month, cur_period = date_to_fortnight(today)
 
-    selected_grade      = request.args.get("grade", grades[0] if grades else None)
-    selected_subject_id = request.args.get("subject_id", type=int)
-    selected_ft_year    = request.args.get("ft_year",  type=int) or cur_year
-    selected_ft_month   = request.args.get("ft_month", type=int) or cur_month
-    selected_ft_period  = request.args.get("ft_period",type=int) or cur_period
+    selected_grade        = request.args.get("grade", grades[0] if grades else None)
+    selected_subject_id   = request.args.get("subject_id", type=int)
+    selected_ft_year      = request.args.get("ft_year",  type=int) or cur_year
+    selected_ft_month     = request.args.get("ft_month", type=int) or cur_month
+    selected_ft_period    = request.args.get("ft_period",type=int) or cur_period
+    highlight_partial     = request.args.get("highlight_partial") == "1"
     return render_template(
         "entry/form.html",
         grades=grades,
         selected_grade=selected_grade,
         selected_subject_id=selected_subject_id,
+        highlight_partial=highlight_partial,
         rankings=RANKINGS,
         current_year=selected_ft_year,
         current_month=selected_ft_month,
@@ -513,4 +515,9 @@ def submit():
     if denied:
         flash(f"{denied} entry/entries were skipped - not in your assigned subjects.", "error")
 
-    return redirect(url_for("entry.form"))
+    grade = subject_ref.grade if subject_ref else ""
+    subject_id = subject_ref.id if subject_ref else None
+    return redirect(url_for("entry.form", grade=grade,
+                             subject_id=subject_id,
+                             ft_year=ft_year, ft_month=ft_month, ft_period=ft_period,
+                             highlight_partial="1" if blocked_students else None))
