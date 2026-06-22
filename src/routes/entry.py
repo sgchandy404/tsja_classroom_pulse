@@ -54,15 +54,20 @@ def form():
     today = datetime.date.today()
     cur_year, cur_month, cur_period = date_to_fortnight(today)
 
-    selected_grade = request.args.get("grade", grades[0] if grades else None)
+    selected_grade      = request.args.get("grade", grades[0] if grades else None)
+    selected_subject_id = request.args.get("subject_id", type=int)
+    selected_ft_year    = request.args.get("ft_year",  type=int) or cur_year
+    selected_ft_month   = request.args.get("ft_month", type=int) or cur_month
+    selected_ft_period  = request.args.get("ft_period",type=int) or cur_period
     return render_template(
         "entry/form.html",
         grades=grades,
         selected_grade=selected_grade,
+        selected_subject_id=selected_subject_id,
         rankings=RANKINGS,
-        current_year=cur_year,
-        current_month=cur_month,
-        current_period=cur_period,
+        current_year=selected_ft_year,
+        current_month=selected_ft_month,
+        current_period=selected_ft_period,
         fortnight_options=_fortnight_options(cur_year, cur_month, cur_period),
     )
 
@@ -363,7 +368,9 @@ def import_rankings():
     if invalid:
         flash(f"{invalid} cell(s) had unrecognised values and were skipped.", "error")
 
-    return redirect(url_for("entry.form", grade=grade))
+    return redirect(url_for("entry.form", grade=grade,
+                             subject_id=subject_id,
+                             ft_year=ft_year, ft_month=ft_month, ft_period=ft_period))
 
 
 @entry_bp.route("/", methods=["POST"])

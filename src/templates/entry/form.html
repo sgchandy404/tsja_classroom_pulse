@@ -4,7 +4,7 @@
 {% block page_title %}Fortnight Entry{% endblock %}
 
 {% block content %}
-<div x-data="entryForm()" x-init="init('{{ selected_grade | e }}')">
+<div x-data="entryForm()" x-init="init('{{ selected_grade | e }}', {{ selected_subject_id or 'null' }})">
 
   <!-- Controls bar -->
   <div class="flex flex-wrap items-end gap-4 mb-6 rounded-xl border border-slate-200 bg-white shadow-sm px-5 py-4">
@@ -334,7 +334,7 @@ function entryForm() {
       return Object.keys(this.rankings).length > 0;
     },
 
-    async init(selectedGrade) {
+    async init(selectedGrade, selectedSubjectId) {
       // Auto-save rankings to localStorage on every change
       this.$watch('rankings', val => {
         if (this.subjectId) {
@@ -355,6 +355,16 @@ function entryForm() {
       if (selectedGrade) {
         this.grade = selectedGrade;
         await this.loadSubjects();
+        if (selectedSubjectId) {
+          const match = this.subjects.find(s => s.id == selectedSubjectId);
+          if (match) {
+            this.subjectId   = String(match.id);
+            this.subjectName = match.name;
+            this.rubrics     = match.rubrics;
+            await this.loadStudents();
+            await this.loadExisting();
+          }
+        }
       }
     },
 
