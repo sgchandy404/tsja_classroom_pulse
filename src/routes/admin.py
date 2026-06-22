@@ -355,6 +355,30 @@ def deactivate_grade(grade_id):
                            entry_count=entry_count)
 
 
+@admin_bp.route("/grades/<int:grade_id>/delete-empty", methods=["POST"])
+@login_required
+@require_role("admin")
+def delete_empty_grade(grade_id):
+    """Hard-delete a grade that has no subjects, students, or entries — escape hatch for partial setups."""
+    grade = db.session.get(Grade, grade_id)
+    if not grade:
+        abort(404)
+    subject_count = Subject.query.filter_by(grade=grade.name).count()
+    student_count = Student.query.filter_by(grade=grade.name).count()
+    if subject_count > 0 or student_count > 0:
+        flash(f"Cannot delete '{grade.name}' — it still has subjects or students. Deactivate it instead.", "error")
+        return redirect(url_for("admin.grades"))
+    name = grade.name
+    db.session.delete(grade)
+    log_audit(user=current_user, action="delete", model_name="Grade",
+              record_id=grade_id, field_name="name", old_value=name,
+              note="Deleted empty grade via import override")
+    db.session.commit()
+    next_url = request.form.get("next") or url_for("admin.grades")
+    flash(f"Grade '{name}' deleted. You can now re-import.", "success")
+    return redirect(next_url)
+
+
 @admin_bp.route("/grades/<int:grade_id>/reactivate", methods=["POST"])
 @login_required
 @require_role("admin")
@@ -521,6 +545,7 @@ def composite_import_grade():
         return render_template("admin/composite_import_grade.html", from_wizard=from_wizard)
 
     errors = []  # collect ALL issues before stopping
+    conflicting_grade = None  # set when "already exists" is the blocker
 
     # ── Sheet: Grade ──
     if "Grade" not in wb.sheetnames:
@@ -537,6 +562,7 @@ def composite_import_grade():
             errors.append("Grade sheet: Grade Name is required.")
         elif Grade.query.filter_by(name=grade_name).first():
             errors.append(f"Grade sheet: '{grade_name}' already exists in the system.")
+            conflicting_grade = grade_name
 
     # ── Sheet: Subjects ──
     subject_names = []  # ordered, deduplicated after validation
@@ -601,8 +627,11 @@ def composite_import_grade():
                 rubric_rows_parsed.append((subj_ref, rub_name, req_raw == "Y"))
 
     if errors:
+        conflicting_grade_obj = Grade.query.filter_by(name=conflicting_grade).first() if conflicting_grade else None
         return render_template("admin/composite_import_grade.html",
-                               from_wizard=from_wizard, errors=errors)
+                               from_wizard=from_wizard, errors=errors,
+                               conflicting_grade=conflicting_grade,
+                               conflicting_grade_obj=conflicting_grade_obj)
 
     # ── All valid — create in one transaction ──
     new_grade = Grade(name=grade_name, is_active=True)
