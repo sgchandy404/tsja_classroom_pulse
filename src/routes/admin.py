@@ -178,7 +178,7 @@ def import_users():
             else:
                 row_errors.append(f"Unknown role '{r}' (valid: Teacher, In-Charge, Coordinator, Admin)")
 
-        # Validate grades
+        # Validate grades (used for In-Charge assignments)
         bad_grades = [g for g in grades_raw if g not in valid_grades]
         if bad_grades:
             row_errors.append(f"Grade(s) not found: {', '.join(bad_grades)}")
@@ -186,6 +186,8 @@ def import_users():
 
         # In-Charge conflict check
         if "incharge" in parsed_roles:
+            if not valid_assigned_grades:
+                row_errors.append("In-Charge role requires at least one Assigned Grade")
             for g in valid_assigned_grades:
                 existing = existing_incharge.get(g, [])
                 if existing:
@@ -193,21 +195,28 @@ def import_users():
                         f"Grade '{g}' already has an In-Charge ({', '.join(existing)}) — resolve conflict first"
                     )
 
-        # Validate subjects against assigned grades
+        # Validate subjects — each entry must be "Grade:Subject" pair
+        # e.g. "Grade 7:Maths, Grade 8:Science"
         teacher_assignments = []  # list of (grade, subject_id)
         if "teacher" in parsed_roles or "incharge" in parsed_roles:
-            for sname in subjs_raw:
-                matches = [
-                    (g, subject_map[(g, sname.lower())])
-                    for g in valid_assigned_grades
-                    if (g, sname.lower()) in subject_map
-                ]
-                if not matches:
+            for entry in subjs_raw:
+                if ":" not in entry:
                     row_errors.append(
-                        f"Subject '{sname}' not found in assigned grade(s)"
+                        f"Subject entry '{entry}' must use Grade:Subject format "
+                        f"(e.g. 'Grade 7:Maths')"
+                    )
+                    continue
+                grade_part, subj_part = [p.strip() for p in entry.split(":", 1)]
+                if grade_part not in valid_grades:
+                    row_errors.append(f"Grade '{grade_part}' in subject entry not found")
+                    continue
+                key = (grade_part, subj_part.lower())
+                if key not in subject_map:
+                    row_errors.append(
+                        f"Subject '{subj_part}' not found in {grade_part}"
                     )
                 else:
-                    teacher_assignments.extend(matches)
+                    teacher_assignments.append((grade_part, subject_map[key]))
 
         if row_errors:
             failed.append({
@@ -346,7 +355,7 @@ def users_import_template():
     ws.cell(row=2, column=2, value="priya@school.edu")
     ws.cell(row=2, column=3, value="Teacher, In-Charge")
     ws.cell(row=2, column=4, value="Grade 7, Grade 8")
-    ws.cell(row=2, column=5, value="Maths, Science")
+    ws.cell(row=2, column=5, value="Grade 7:Maths, Grade 8:Science")
 
     hint_font = openpyxl.styles.Font(italic=True, color="999999")
     for col in range(1, 6):
