@@ -143,6 +143,8 @@ def _migrate_schema() -> None:
     migrations = [
         "ALTER TABLE rubrics ADD COLUMN description VARCHAR(200)",
         "ALTER TABLE rubrics ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN name VARCHAR(120)",
+        "ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:

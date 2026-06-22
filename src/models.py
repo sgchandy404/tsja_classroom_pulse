@@ -63,10 +63,12 @@ def next_fortnight(year: int, month: int, period: int) -> tuple[int, int, int]:
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    active        = db.Column(db.Boolean, nullable=False, default=True)
+    id                   = db.Column(db.Integer, primary_key=True)
+    username             = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash        = db.Column(db.String(256), nullable=False)
+    active               = db.Column(db.Boolean, nullable=False, default=True)
+    name                 = db.Column(db.String(120), nullable=True)
+    must_change_password = db.Column(db.Boolean, nullable=False, default=False)
 
     roles      = db.relationship("UserRole", back_populates="user",
                                  cascade="all, delete-orphan", lazy="joined")
