@@ -256,8 +256,7 @@ def export_template():
     wb.save(output)
     output.seek(0)
 
-    period_label = fortnight_label(ft_year, ft_month, ft_period).replace(" ", "_").replace("–", "-")
-    filename = f"entry_{grade.replace(' ', '_')}_{subject.name.replace(' ', '_')}_{period_label}.xlsx"
+    filename = f"{grade.replace(' ', '_')}_{subject.name.replace(' ', '_')}_Fortnightly_Evaluation.xlsx"
     return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
