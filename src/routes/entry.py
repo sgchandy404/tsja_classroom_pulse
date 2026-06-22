@@ -415,6 +415,8 @@ def submit():
     denied = 0
     skipped = 0
     incomplete_students = set()
+    students_saved = set()
+    subject_ref = None
     now = datetime.datetime.utcnow()
 
     for (student_id, rubric_id), ranking in raw_entries.items():
@@ -431,6 +433,8 @@ def submit():
         subject = db.session.get(Subject, rubric.subject_id)
         if not subject:
             continue
+        if subject_ref is None:
+            subject_ref = subject
 
         if not p.can_enter(subject.grade, subject.id):
             denied += 1
@@ -485,17 +489,23 @@ def submit():
                 new_value  = ranking,
             )
         saved += 1
+        students_saved.add(student_id)
 
     db.session.commit()
 
     period_label = fortnight_label(ft_year, ft_month, ft_period)
+    all_student_ids = {sid for (sid, _) in raw_entries}
+    complete_count  = len(all_student_ids) - len(incomplete_students)
     if saved:
-        flash(f"Saved {saved} ranking(s) for {period_label}.", "success")
-    if incomplete_students:
-        flash(f"{len(incomplete_students)} student(s) still have incomplete required rubrics - fill them in to complete the record.", "warning")
+        student_label = f"{len(students_saved)} student" + ("s" if len(students_saved) != 1 else "")
+        flash(
+            f"Saved data for {student_label}. "
+            f"{complete_count} of {len(all_student_ids)} students fully complete for {period_label}.",
+            "success" if not incomplete_students else "warning"
+        )
     if locked:
         flash(f"{locked} entry/entries were locked (grace period expired or term locked).", "error")
     if denied:
-        flash(f"{denied} entry/entries were skipped — not in your assigned subjects.", "error")
+        flash(f"{denied} entry/entries were skipped - not in your assigned subjects.", "error")
 
     return redirect(url_for("entry.form"))
