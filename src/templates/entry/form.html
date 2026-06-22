@@ -239,13 +239,13 @@
   >
     <div class="rounded-2xl bg-white shadow-2xl w-[420px] overflow-hidden">
 
-      <!-- Header with gradient -->
-      <div class="bg-gradient-to-br from-brand-600 to-brand-700 px-6 py-5 flex items-start justify-between">
+      <!-- Header -->
+      <div class="px-6 pt-5 pb-4 flex items-start justify-between border-b border-slate-100">
         <div>
-          <p class="text-sm font-semibold text-white">Import rankings</p>
-          <p class="text-xs text-brand-200 mt-0.5" x-text="subjectName + ' · ' + grade"></p>
+          <p class="text-sm font-semibold text-slate-800">Import rankings</p>
+          <p class="text-xs text-slate-400 mt-0.5" x-text="subjectName + ' · ' + grade"></p>
         </div>
-        <button @click="importing = false" class="text-brand-200 hover:text-white mt-0.5">
+        <button @click="importing = false" class="text-slate-400 hover:text-slate-600 mt-0.5">
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
           </svg>
@@ -278,7 +278,7 @@
           <div class="w-7 flex justify-center shrink-0">
             <div class="w-px h-4 bg-slate-200"></div>
           </div>
-          <p class="text-xs text-slate-300">Fill in the rankings, then upload below</p>
+          <p class="text-xs text-slate-400">Fill in the rankings, then upload below</p>
         </div>
 
         <!-- Step 2 -->
@@ -286,7 +286,7 @@
           <div class="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 border-2 border-slate-200 text-slate-500 text-xs font-bold">2</div>
           <div class="flex-1">
             <p class="text-sm font-medium text-slate-800">Upload filled file</p>
-            <p class="text-xs text-slate-400 mt-0.5 mb-3">Blank cells are left untouched — only filled cells update.</p>
+            <p class="text-xs text-slate-400 mt-0.5 mb-3">Blank cells are left untouched - only filled cells update.</p>
             <button type="button" @click="$refs.importFile.click()"
                     class="inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 transition-colors">
               <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
