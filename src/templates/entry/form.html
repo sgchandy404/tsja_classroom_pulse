@@ -134,6 +134,7 @@
       <div class="flex items-center gap-2">
         <a
           :href="`/entry/export?grade=${encodeURIComponent(grade)}&subject_id=${subjectId}&ft_year=${ftYear}&ft_month=${ftMonth}&ft_period=${ftPeriod}`"
+          :download="`${grade}_${subjectName}_Fortnightly_Evaluation.xlsx`"
           class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
                  text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
         >
@@ -153,7 +154,7 @@
                       window.removeEventListener('focus', onFocus);
                       setTimeout(() => { if (!$refs.importFile.files.length) importing = false; }, 300);
                     }, { once: true });
-                    $refs.importFile.click();
+                    $nextTick(() => setTimeout(() => $refs.importFile.click(), 120));
                   "
                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
                          text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
@@ -249,8 +250,11 @@
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
       </svg>
       <div class="text-center">
-        <p class="text-sm font-semibold text-slate-800">Importing rankings…</p>
-        <p class="text-xs text-slate-400 mt-1">Reading your file and saving changes</p>
+        <p class="text-sm font-semibold text-slate-800">Select your filled-in file</p>
+        <p class="text-xs text-slate-400 mt-1 mb-2">Looking for:</p>
+        <p class="text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-600"
+           x-text="`${grade}_${subjectName}_Fortnightly_Evaluation.xlsx`"></p>
+        <p class="text-xs text-slate-400 mt-3">Rankings will be merged — blank cells are left untouched</p>
       </div>
     </div>
   </div>
