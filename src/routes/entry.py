@@ -341,9 +341,9 @@ def import_rankings():
                 existing.ranking    = ranking
                 existing.updated_by = current_user.id
                 existing.updated_at = now
-                log_audit(current_user, "edit", "FortnightEntry", existing.id,
-                          "ranking", old, ranking,
-                          "Admin override" if p.is_admin and not p.within_grace_period(existing) else None)
+                log_audit(user=current_user, action="edit", model_name="FortnightEntry", record_id=existing.id,
+                          field_name="ranking", old_value=old, new_value=ranking,
+                          note="Admin override" if p.is_admin and not p.within_grace_period(existing) else None)
             else:
                 entry = FortnightEntry(
                     student_id=student_id, subject_id=subject_id, rubric_id=rubric_id,
@@ -352,7 +352,8 @@ def import_rankings():
                 )
                 db.session.add(entry)
                 db.session.flush()
-                log_audit(current_user, "create", "FortnightEntry", entry.id, "ranking", None, ranking)
+                log_audit(user=current_user, action="create", model_name="FortnightEntry", record_id=entry.id,
+                          field_name="ranking", old_value=None, new_value=ranking)
             saved += 1
 
     db.session.commit()
