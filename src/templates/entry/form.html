@@ -228,7 +228,8 @@
   <!-- spacing so cards aren't hidden under sticky bar -->
   <div x-show="subjectId && students.length > 0" class="h-16"></div>
 
-  <!-- Import progress popup -->
+  <!-- Import progress popup — teleported to body so fixed positioning isn't clipped by parent transforms -->
+  <template x-teleport="body">
   <div
     x-show="importing"
     x-transition:enter="transition ease-out duration-150"
@@ -256,6 +257,7 @@
       </div>
     </div>
   </div>
+  </template>
 
   <!-- Hidden POST form -->
   <form id="entry-form" method="POST" action="{{ url_for('entry.submit') }}" class="hidden">
