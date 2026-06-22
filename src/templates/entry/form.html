@@ -339,18 +339,19 @@ function entryForm() {
     subjects:      [],
     rubrics:       [],
     rankings:      {},
-    savedCount:    0,
-    draftRestored: 0,
-    submitted:     false,
-    loading:       false,
-    importing:     false,
+    savedCount:     0,
+    draftRestored:  0,
+    submitted:      false,
+    loading:        false,
+    importing:      false,
+    serverSnapshot: {},
 
     draftKey() {
       return `cp_draft_${this.grade}_${this.subjectId}_${this.ftYear}_${this.ftMonth}_${this.ftPeriod}`;
     },
 
     get isDirty() {
-      return Object.keys(this.rankings).length > 0;
+      return JSON.stringify(this.rankings) !== JSON.stringify(this.serverSnapshot);
     },
 
     isPartial(student) {
@@ -455,6 +456,7 @@ function entryForm() {
       const url = `/entry/existing?subject_id=${this.subjectId}&ft_year=${this.ftYear}&ft_month=${this.ftMonth}&ft_period=${this.ftPeriod}`;
       const res  = await fetch(url);
       const serverData = await res.json();
+      this.serverSnapshot = { ...serverData };
       this.savedCount = Object.keys(serverData).length;
 
       // Merge with any localStorage draft (draft wins — in-progress work takes priority)
