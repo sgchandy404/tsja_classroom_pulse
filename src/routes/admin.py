@@ -461,6 +461,166 @@ def reactivate_subject(subject_id):
     return redirect(url_for("admin.subjects", grade=subj.grade))
 
 
+@admin_bp.route("/subjects/import", methods=["GET", "POST"])
+@login_required
+@require_role("admin")
+def import_subjects():
+    all_grades = _all_grades()
+
+    if request.method == "GET":
+        return render_template("admin/import_subjects.html",
+                               all_grades=all_grades,
+                               preselect_grade=request.args.get("grade", ""))
+
+    grade = request.form.get("grade", "").strip()
+    if not grade:
+        flash("Please select a grade.", "error")
+        return render_template("admin/import_subjects.html",
+                               all_grades=all_grades, preselect_grade="")
+
+    if grade not in {g for g in all_grades}:
+        abort(400)
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("No file selected.", "error")
+        return render_template("admin/import_subjects.html",
+                               all_grades=all_grades, preselect_grade=grade)
+
+    try:
+        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    except Exception:
+        flash("Could not read the file. Please upload a valid .xlsx file.", "error")
+        return render_template("admin/import_subjects.html",
+                               all_grades=all_grades, preselect_grade=grade)
+
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+
+    existing_names = {
+        s.name.strip().lower()
+        for s in Subject.query.filter_by(grade=grade).all()
+    }
+
+    succeeded = []
+    failed = []
+    seen_in_file = {}  # name_lower → first row number
+
+    for idx, row in enumerate(rows, start=2):
+        name = str(row[0]).strip() if row[0] is not None else ""
+
+        if not name:
+            continue  # blank row
+
+        row_errors = []
+        name_lower = name.lower()
+
+        if name_lower in existing_names:
+            row_errors.append(f"'{name}' already exists in {grade}")
+        elif name_lower in seen_in_file:
+            row_errors.append(
+                f"'{name}' duplicated in this file (first seen row {seen_in_file[name_lower]})"
+            )
+
+        if row_errors:
+            failed.append({"row": idx, "name": name, "reasons": row_errors})
+            continue
+
+        seen_in_file[name_lower] = idx
+        existing_names.add(name_lower)
+        subj = Subject(name=name, grade=grade, is_active=True)
+        db.session.add(subj)
+        succeeded.append(name)
+
+    if succeeded:
+        log_audit(
+            user=current_user, action="create", model_name="Subject", record_id=0,
+            field_name="bulk_import",
+            new_value=f"{len(succeeded)} subjects imported into {grade}; {len(failed)} failed",
+            note=f"File: {file.filename}",
+        )
+        db.session.commit()
+
+    if succeeded and not failed:
+        flash(f"Imported {len(succeeded)} subject(s) into {grade}.", "success")
+    elif succeeded and failed:
+        flash(f"Imported {len(succeeded)} subject(s). {len(failed)} row(s) had errors.", "warning")
+    else:
+        flash(f"No subjects imported. {len(failed)} row(s) had errors.", "error")
+
+    return render_template("admin/import_subjects.html",
+                           all_grades=all_grades, preselect_grade=grade,
+                           failed_rows=failed)
+
+
+@admin_bp.route("/subjects/export")
+@login_required
+@require_role("admin", "incharge", "coordinator", "teacher")
+def export_subjects():
+    p = get_perms()
+    grade_filter = request.args.get("grade", "").strip()
+
+    is_template = request.args.get("template") == "1"
+
+    # Determine which grades the user may export
+    if p.is_admin or p.can_view_all:
+        allowed_grades = None  # no restriction
+    else:
+        allowed_grades = p.visible_grades()  # set of grade strings
+
+    if grade_filter:
+        if allowed_grades is not None and grade_filter not in allowed_grades:
+            abort(403)
+
+    q = Subject.query
+    if grade_filter:
+        q = q.filter_by(grade=grade_filter)
+    elif allowed_grades is not None:
+        q = q.filter(Subject.grade.in_(list(allowed_grades)))
+
+    subjects = q.order_by(Subject.grade, Subject.name).all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Subjects"
+    bold = openpyxl.styles.Font(bold=True)
+
+    if is_template:
+        ws.cell(row=1, column=1, value="Subject Name").font = bold
+        ws.column_dimensions["A"].width = 35
+        hint_font = openpyxl.styles.Font(italic=True, color="999999")
+        ws.cell(row=2, column=1, value="e.g. Mathematics").font = hint_font
+    else:
+        for col, h in enumerate(["Subject Name", "Grade", "Status"], 1):
+            ws.cell(row=1, column=col, value=h).font = bold
+        for ri, s in enumerate(subjects, 2):
+            ws.cell(row=ri, column=1, value=s.name)
+            ws.cell(row=ri, column=2, value=s.grade)
+            ws.cell(row=ri, column=3, value="Active" if s.is_active else "Inactive")
+        ws.column_dimensions["A"].width = 35
+        ws.column_dimensions["B"].width = 18
+        ws.column_dimensions["C"].width = 12
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    grade_part = grade_filter.replace(" ", "_") if grade_filter else "All_Grades"
+    filename = (f"TEMPLATE_Subjects_{grade_part}.xlsx" if is_template
+                else f"Subjects_{grade_part}.xlsx")
+
+    if not is_template:
+        log_audit(
+            user=current_user, action="create", model_name="Subject", record_id=0,
+            field_name="export",
+            new_value=f"Exported {len(subjects)} subjects ({grade_part})",
+        )
+        db.session.commit()
+
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
 # ---------------------------------------------------------------------------
 # Routes: student management (admin + incharge)
 # ---------------------------------------------------------------------------
