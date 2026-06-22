@@ -315,37 +315,48 @@ def import_rankings():
         flash("You don't have permission to import rankings for this subject.", "error")
         return redirect(url_for("entry.form"))
 
-    saved = skipped = invalid = 0
+    invalid = 0
     required_rubric_ids = {r.id for r in subject.rubrics if r.is_active and r.is_required}
-    # track which students are missing at least one required rubric after import
-    students_incomplete = set()
 
+    # Parse all rows first so we can do per-student validation
+    parsed = {}   # student_id -> {rubric_id: ranking}
     for row_offset, student_id in enumerate(student_ids):
-        xl_row = row_offset + 2  # data starts at row 2
-        filled_required = set()
+        xl_row = row_offset + 2
+        row_data = {}
         for col_offset, rubric_id in enumerate(rubric_ids):
-            xl_col  = col_offset + 3  # data starts at col 3
+            xl_col  = col_offset + 3
             raw_val = ws.cell(xl_row, xl_col).value
             if raw_val is None or str(raw_val).strip() == "":
-                skipped += 1
                 continue
             ranking = str(raw_val).strip()
             if ranking not in RANKINGS:
                 invalid += 1
                 continue
+            row_data[rubric_id] = ranking
+        parsed[student_id] = row_data
 
-            rubric = db.session.get(Rubric, rubric_id)
-            if not rubric:
-                continue
+    # Per-student validation: if any required rubric is filled, all must be filled
+    blocked_students = set()
+    skipped_students = set()
+    for student_id, row_data in parsed.items():
+        filled_required  = {rid for rid in row_data if rid in required_rubric_ids}
+        missing_required = required_rubric_ids - set(row_data)
+        if not filled_required:
+            skipped_students.add(student_id)
+        elif missing_required:
+            blocked_students.add(student_id)
 
+    saveable_students = set(parsed) - blocked_students - skipped_students
+    saved = 0
+
+    for student_id in saveable_students:
+        for rubric_id, ranking in parsed[student_id].items():
             existing = FortnightEntry.query.filter_by(
                 student_id=student_id, rubric_id=rubric_id,
                 ft_year=ft_year, ft_month=ft_month, ft_period=ft_period,
             ).first()
-
             if existing:
                 if not p.can_edit_entry(existing):
-                    skipped += 1
                     continue
                 old = existing.ranking
                 existing.ranking    = ranking
@@ -365,21 +376,24 @@ def import_rankings():
                 log_audit(user=current_user, action="create", model_name="FortnightEntry", record_id=entry.id,
                           field_name="ranking", old_value=None, new_value=ranking)
             saved += 1
-            if rubric_id in required_rubric_ids:
-                filled_required.add(rubric_id)
-
-        if filled_required < required_rubric_ids:
-            students_incomplete.add(student_id)
 
     db.session.commit()
 
-    period_label = fortnight_label(ft_year, ft_month, ft_period)
-    complete_count = len(student_ids) - len(students_incomplete)
-    if saved:
-        msg = f"Imported rankings for {complete_count} of {len(student_ids)} students · {subject.name} · {period_label}."
-        if students_incomplete:
-            msg += f" {len(students_incomplete)} student(s) still need required rubrics - finish them manually."
-        flash(msg, "success" if not students_incomplete else "warning")
+    period_label   = fortnight_label(ft_year, ft_month, ft_period)
+    complete_count = len(saveable_students)
+    total_students = len(student_ids)
+
+    if saved or skipped_students:
+        flash(
+            f"Imported rankings for {complete_count} of {total_students} students - {subject.name} - {period_label}.",
+            "success" if not blocked_students else "info"
+        )
+    if blocked_students:
+        flash(
+            f"{len(blocked_students)} student(s) were skipped - some required rubrics were blank. "
+            f"Complete all required rubrics for those students and re-upload.",
+            "warning"
+        )
     if invalid:
         flash(f"{invalid} cell(s) had unrecognised values and were skipped.", "error")
 
@@ -410,96 +424,89 @@ def submit():
         flash("No rankings submitted.", "error")
         return redirect(url_for("entry.form"))
 
-    saved = 0
-    locked = 0
-    denied = 0
-    skipped = 0
-    incomplete_students = set()
-    students_saved = set()
-    subject_ref = None
     now = datetime.datetime.utcnow()
 
+    # Group by student for per-student validation
+    from collections import defaultdict
+    by_student = defaultdict(dict)   # student_id -> {rubric_id: ranking|None}
+    rubric_cache = {}
+    subject_ref  = None
     for (student_id, rubric_id), ranking in raw_entries.items():
-        if ranking is None:
-            rubric = db.session.get(Rubric, rubric_id)
-            if rubric and rubric.is_required:
-                incomplete_students.add(student_id)
-            skipped += 1
-            continue
+        rubric = rubric_cache.get(rubric_id) or db.session.get(Rubric, rubric_id)
+        if rubric:
+            rubric_cache[rubric_id] = rubric
+            if subject_ref is None:
+                subject_ref = db.session.get(Subject, rubric.subject_id)
+        by_student[student_id][rubric_id] = ranking
 
-        rubric = db.session.get(Rubric, rubric_id)
-        if not rubric:
-            continue
-        subject = db.session.get(Subject, rubric.subject_id)
-        if not subject:
-            continue
-        if subject_ref is None:
-            subject_ref = subject
+    required_rubric_ids = {rid for rid, r in rubric_cache.items() if r.is_required}
 
-        if not p.can_enter(subject.grade, subject.id):
+    # Per-student validation: if any required rubric is filled, all must be filled
+    blocked_students = set()   # started but missing a required rubric
+    skipped_students = set()   # no required rubrics filled at all — not yet assessed
+    for student_id, entries in by_student.items():
+        filled_required   = {rid for rid, v in entries.items() if rid in required_rubric_ids and v}
+        missing_required  = required_rubric_ids - {rid for rid, v in entries.items() if v}
+        if not filled_required:
+            skipped_students.add(student_id)   # nothing filled — skip silently
+        elif missing_required:
+            blocked_students.add(student_id)   # partial — block
+
+    saveable_students = set(by_student) - blocked_students - skipped_students
+
+    saved = locked = denied = 0
+    for student_id in saveable_students:
+        subject = subject_ref
+        if not subject or not p.can_enter(subject.grade, subject.id):
             denied += 1
             continue
-
-        existing = FortnightEntry.query.filter_by(
-            student_id=student_id,
-            rubric_id=rubric_id,
-            ft_year=ft_year,
-            ft_month=ft_month,
-            ft_period=ft_period,
-        ).first()
-
-        if existing:
-            if not p.can_edit_entry(existing):
-                locked += 1
+        for rubric_id, ranking in by_student[student_id].items():
+            if not ranking:
                 continue
-            old_ranking = existing.ranking
-            existing.ranking    = ranking
-            existing.updated_by = current_user.id
-            existing.updated_at = now
-            log_audit(
-                user       = current_user,
-                action     = "edit",
-                model_name = "FortnightEntry",
-                record_id  = existing.id,
-                field_name = "ranking",
-                old_value  = old_ranking,
-                new_value  = ranking,
-                note       = "Admin override" if p.is_admin and not p.within_grace_period(existing) else None,
-            )
-        else:
-            entry = FortnightEntry(
-                student_id=student_id,
-                subject_id=subject.id,
-                rubric_id=rubric_id,
-                ft_year=ft_year,
-                ft_month=ft_month,
-                ft_period=ft_period,
-                ranking=ranking,
-                created_by=current_user.id,
-                created_at=now,
-            )
-            db.session.add(entry)
-            db.session.flush()
-            log_audit(
-                user       = current_user,
-                action     = "create",
-                model_name = "FortnightEntry",
-                record_id  = entry.id,
-                field_name = "ranking",
-                new_value  = ranking,
-            )
-        saved += 1
-        students_saved.add(student_id)
+            existing = FortnightEntry.query.filter_by(
+                student_id=student_id, rubric_id=rubric_id,
+                ft_year=ft_year, ft_month=ft_month, ft_period=ft_period,
+            ).first()
+            if existing:
+                if not p.can_edit_entry(existing):
+                    locked += 1
+                    continue
+                old_ranking = existing.ranking
+                existing.ranking    = ranking
+                existing.updated_by = current_user.id
+                existing.updated_at = now
+                log_audit(user=current_user, action="edit", model_name="FortnightEntry",
+                          record_id=existing.id, field_name="ranking",
+                          old_value=old_ranking, new_value=ranking,
+                          note="Admin override" if p.is_admin and not p.within_grace_period(existing) else None)
+            else:
+                entry = FortnightEntry(
+                    student_id=student_id, subject_id=subject.id, rubric_id=rubric_id,
+                    ft_year=ft_year, ft_month=ft_month, ft_period=ft_period,
+                    ranking=ranking, created_by=current_user.id, created_at=now,
+                )
+                db.session.add(entry)
+                db.session.flush()
+                log_audit(user=current_user, action="create", model_name="FortnightEntry",
+                          record_id=entry.id, field_name="ranking", new_value=ranking)
+            saved += 1
 
     db.session.commit()
 
-    period_label = fortnight_label(ft_year, ft_month, ft_period)
-    all_student_ids = {sid for (sid, _) in raw_entries}
-    complete_count  = len(all_student_ids) - len(incomplete_students)
-    if saved:
+    period_label   = fortnight_label(ft_year, ft_month, ft_period)
+    total_students = len(by_student)
+    complete_count = len(saveable_students)
+
+    if saved or skipped_students:
         flash(
-            f"Saved. {complete_count} of {len(all_student_ids)} students fully complete for {period_label}.",
-            "success" if not incomplete_students else "info"
+            f"Saved. {complete_count} of {total_students} students fully complete for {period_label}.",
+            "success" if not blocked_students else "info"
+        )
+    if blocked_students:
+        flash(
+            f"{len(blocked_students)} student(s) were not saved - some required rubrics were left blank. "
+            f"Complete all required rubrics for those students and save again.",
+            "warning"
         )
     if locked:
         flash(f"{locked} entry/entries were locked (grace period expired or term locked).", "error")
