@@ -144,18 +144,10 @@
           Export
         </a>
 
-        <form method="POST" action="{{ url_for('entry.import_rankings') }}" enctype="multipart/form-data">
+        <form x-ref="importForm" method="POST" action="{{ url_for('entry.import_rankings') }}" enctype="multipart/form-data">
           <input x-ref="importFile" type="file" name="xlsx_file" accept=".xlsx" class="hidden"
-                 @change="$event.target.form.submit()" />
-          <button type="button"
-                  @click="
-                    importing = true;
-                    window.addEventListener('focus', function onFocus() {
-                      window.removeEventListener('focus', onFocus);
-                      setTimeout(() => { if (!$refs.importFile.files.length) importing = false; }, 300);
-                    }, { once: true });
-                    $nextTick(() => setTimeout(() => $refs.importFile.click(), 120));
-                  "
+                 @change="$refs.importForm.submit()" />
+          <button type="button" @click="importing = true"
                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
                          text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
             <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -244,17 +236,23 @@
     x-transition:enter-end="opacity-100 scale-100"
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
   >
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-xl px-8 py-6 flex flex-col items-center gap-4 min-w-[240px]">
-      <svg class="h-6 w-6 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-      </svg>
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-xl px-8 py-6 flex flex-col items-center gap-4 w-80">
       <div class="text-center">
-        <p class="text-sm font-semibold text-slate-800">Select your filled-in file</p>
-        <p class="text-xs text-slate-400 mt-1 mb-2">Looking for:</p>
-        <p class="text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-600"
+        <p class="text-sm font-semibold text-slate-800">Import rankings</p>
+        <p class="text-xs text-slate-400 mt-1 mb-3">Select the filled-in file for:</p>
+        <p class="text-xs font-mono bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-slate-600 break-all"
            x-text="`${grade}_${subjectName}_Fortnightly_Evaluation.xlsx`"></p>
-        <p class="text-xs text-slate-400 mt-3">Rankings will be merged — blank cells are left untouched</p>
+        <p class="text-xs text-slate-400 mt-3">Blank cells will leave existing rankings untouched.</p>
+      </div>
+      <div class="flex gap-2 w-full">
+        <button type="button" @click="importing = false"
+                class="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+          Cancel
+        </button>
+        <button type="button" @click="$refs.importFile.click()"
+                class="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-700 transition-colors">
+          Browse file…
+        </button>
       </div>
     </div>
   </div>
