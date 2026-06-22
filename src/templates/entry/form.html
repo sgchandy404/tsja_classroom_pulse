@@ -237,23 +237,51 @@
     x-transition:enter-end="opacity-100 scale-100"
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
   >
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-xl px-8 py-6 flex flex-col items-center gap-4 w-80">
-      <div class="text-center">
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-xl px-6 py-5 flex flex-col gap-4 w-96">
+      <div class="flex items-center justify-between">
         <p class="text-sm font-semibold text-slate-800">Import rankings</p>
-        <p class="text-xs text-slate-400 mt-1 mb-3">Select the filled-in file for:</p>
-        <p class="text-xs font-mono bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-slate-600 break-all"
-           x-text="`${grade}_${subjectName}_Fortnightly_Evaluation.xlsx`"></p>
-        <p class="text-xs text-slate-400 mt-3">Blank cells will leave existing rankings untouched.</p>
+        <button @click="importing = false" class="text-slate-400 hover:text-slate-600">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
-      <div class="flex gap-2 w-full">
-        <button type="button" @click="importing = false"
-                class="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-          Cancel
-        </button>
-        <button type="button" @click="$refs.importFile.click()"
-                class="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-700 transition-colors">
-          Browse file…
-        </button>
+
+      <!-- Step 1 -->
+      <div class="flex gap-3 items-start">
+        <span class="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white text-xs font-bold">1</span>
+        <div>
+          <p class="text-xs font-medium text-slate-700">Download the pre-filled template</p>
+          <p class="text-xs text-slate-400 mt-0.5 mb-2">Contains student names, rubric columns, and ranking dropdowns.</p>
+          <a
+            :href="`/entry/export?grade=${encodeURIComponent(grade)}&subject_id=${subjectId}&ft_year=${ftYear}&ft_month=${ftMonth}&ft_period=${ftPeriod}`"
+            :download="`${grade}_${subjectName}_Fortnightly_Evaluation.xlsx`"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+            Download template
+          </a>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100"></div>
+
+      <!-- Step 2 -->
+      <div class="flex gap-3 items-start">
+        <span class="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-slate-500 text-xs font-bold">2</span>
+        <div>
+          <p class="text-xs font-medium text-slate-700">Fill it in and upload</p>
+          <p class="text-xs text-slate-400 mt-0.5 mb-2">Blank cells are left untouched — only filled cells update rankings.</p>
+          <button type="button" @click="$refs.importFile.click()"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+            </svg>
+            Choose filled file…
+          </button>
+        </div>
       </div>
     </div>
   </div>
