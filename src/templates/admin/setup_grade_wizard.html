@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Set Up New Grade — Classroom Pulse{% endblock %}
+{% block page_title %}Set Up New Grade{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.grades') }}"
+     class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">
+    ← Back to Grades
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+
+  {# ── Step indicator ── #}
+  {% set steps = [
+    ("structure", "Structure", "Grade, Subjects & Rubrics"),
+    ("teachers",  "Teachers",  "Assign to subjects"),
+    ("students",  "Students",  "Import or add students"),
+  ] %}
+  <div class="flex items-center gap-0 mb-8">
+    {% for key, label, sub in steps %}
+      {% set active  = (step == key) %}
+      {% set done    = (loop.index < [('structure',1),('teachers',2),('students',3)] | selectattr(0,'equalto',step) | map(attribute=1) | first | default(1)) %}
+      <div class="flex items-center {% if not loop.last %}flex-1{% endif %}">
+        <div class="flex flex-col items-center">
+          <span class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold
+                       {% if active %}bg-indigo-600 text-white ring-4 ring-indigo-100
+                       {% elif done %}bg-indigo-200 text-indigo-700
+                       {% else %}bg-slate-100 text-slate-400{% endif %}">
+            {{ loop.index }}
+          </span>
+          <span class="mt-1.5 text-xs font-semibold {% if active %}text-indigo-700{% else %}text-slate-400{% endif %}">{{ label }}</span>
+          <span class="text-[10px] text-slate-400">{{ sub }}</span>
+        </div>
+        {% if not loop.last %}
+        <div class="flex-1 h-px bg-slate-200 mx-3 mb-5"></div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  {# ════════════════════════════════════════
+     STEP: structure
+     ════════════════════════════════════════ #}
+  {% if step == "structure" %}
+
+  <div class="space-y-4" x-data="{ mode: 'import' }">
+
+    {# Mode toggle #}
+    <div class="flex rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
+      <button type="button" @click="mode='import'"
+              class="flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+              :class="mode==='import' ? 'bg-white shadow text-indigo-700 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'">
+        Import from file
+      </button>
+      <button type="button" @click="mode='manual'"
+              class="flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+              :class="mode==='manual' ? 'bg-white shadow text-indigo-700 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700'">
+        Set up manually
+      </button>
+    </div>
+
+    {# Import path #}
+    <div x-show="mode==='import'" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0">
+      <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 p-6 space-y-3">
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Upload a single .xlsx file with three sheets — <strong>Grade</strong>, <strong>Subjects</strong>, and <strong>Rubrics</strong>.
+          The entire grade is created atomically; if any sheet has issues, nothing is created and you'll see a full error report.
+        </p>
+        <a href="{{ url_for('admin.composite_import_grade', wizard=1) }}"
+           class="flex items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3.5
+                  hover:bg-indigo-100 transition-colors group">
+          <div class="flex items-center gap-3">
+            <svg class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-indigo-700">Import Grade Setup file</p>
+              <p class="text-xs text-indigo-500 mt-0.5">Grade + Subjects + Rubrics in one .xlsx</p>
+            </div>
+          </div>
+          <svg class="h-4 w-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+          </svg>
+        </a>
+        <p class="text-xs text-slate-400">
+          After a successful import, you'll return here to assign teachers and students.
+        </p>
+      </div>
+    </div>
+
+    {# Manual path #}
+    <div x-show="mode==='manual'" x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0">
+      <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 overflow-hidden">
+        <div class="divide-y divide-slate-100">
+          {% for label, url, desc in [
+            ("1. Create the Grade",   url_for('admin.grades'),         "Add the grade name in the Grades module"),
+            ("2. Add Subjects",        url_for('admin.subjects'),       "Go to Subjects, filter by your new grade, add each subject"),
+            ("3. Add Rubrics",         url_for('admin.subjects'),       "For each subject, open its Rubrics page and add rubrics"),
+          ] %}
+          <a href="{{ url }}"
+             class="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors group">
+            <div>
+              <p class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700">{{ label }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">{{ desc }}</p>
+            </div>
+            <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-400 shrink-0"
+                 fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+            </svg>
+          </a>
+          {% endfor %}
+        </div>
+        <div class="px-5 py-3 bg-slate-50/80 border-t border-slate-100">
+          <p class="text-xs text-slate-400">
+            Once done, come back here and select a grade to continue with teacher and student setup.
+          </p>
+          <form class="flex gap-2 mt-2" method="GET" action="{{ url_for('admin.setup_grade_wizard') }}">
+            <select name="grade"
+                    class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm
+                           focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-300">
+              <option value="">Select a grade to continue...</option>
+              {% for g in active_grades %}
+                <option value="{{ g }}">{{ g }}</option>
+              {% endfor %}
+            </select>
+            <input type="hidden" name="step" value="teachers">
+            <button type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors">
+              Continue →
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ════════════════════════════════════════
+     STEP: teachers
+     ════════════════════════════════════════ #}
+  {% elif step == "teachers" %}
+
+  {% if not grade %}
+  <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-700">
+    No grade selected. <a href="{{ url_for('admin.setup_grade_wizard') }}" class="font-semibold underline">Go back to step 1.</a>
+  </div>
+  {% else %}
+  <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+      <p class="text-sm font-semibold text-slate-800">Assign teachers to {{ grade.name }}</p>
+      <p class="text-xs text-slate-400 mt-0.5">You can skip this and assign teachers later via User Management.</p>
+    </div>
+    <div class="px-5 py-4 space-y-2">
+      {% if subjects %}
+        {% for subj in subjects %}
+        <div class="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+          <span class="text-sm font-medium text-slate-700">{{ subj.name }}</span>
+          <a href="{{ url_for('admin.edit_user', user_id=0) if false else url_for('admin.index') }}"
+             class="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+            Assign via Users →
+          </a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-sm text-slate-400 py-4 text-center">No subjects found for {{ grade.name }}.</p>
+      {% endif %}
+    </div>
+    <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
+      <a href="{{ url_for('admin.setup_grade_wizard', grade=grade_name, step='structure') }}"
+         class="text-sm text-slate-500 hover:text-slate-700">← Back</a>
+      <a href="{{ url_for('admin.setup_grade_wizard', grade=grade_name, step='students') }}"
+         class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors">
+        Continue to Students →
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ════════════════════════════════════════
+     STEP: students
+     ════════════════════════════════════════ #}
+  {% elif step == "students" %}
+
+  {% if not grade %}
+  <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-700">
+    No grade selected. <a href="{{ url_for('admin.setup_grade_wizard') }}" class="font-semibold underline">Go back to step 1.</a>
+  </div>
+  {% else %}
+  <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+      <p class="text-sm font-semibold text-slate-800">Add students to {{ grade.name }}</p>
+      <p class="text-xs text-slate-400 mt-0.5">Import a list or add students one at a time.</p>
+    </div>
+    <div class="px-5 py-4 divide-y divide-slate-100 space-y-0">
+      <a href="{{ url_for('admin.import_students', grade=grade_name) }}"
+         class="flex items-center justify-between py-4 hover:text-indigo-700 group transition-colors">
+        <div>
+          <p class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700">Import students from .xlsx</p>
+          <p class="text-xs text-slate-400 mt-0.5">Bulk upload — Name and Roll Number</p>
+        </div>
+        <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-400 shrink-0"
+             fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+        </svg>
+      </a>
+      <a href="{{ url_for('admin.new_student', grade=grade_name) }}"
+         class="flex items-center justify-between py-4 hover:text-indigo-700 group transition-colors">
+        <div>
+          <p class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700">Add students one by one</p>
+          <p class="text-xs text-slate-400 mt-0.5">Use the individual student form</p>
+        </div>
+        <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-400 shrink-0"
+             fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+        </svg>
+      </a>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
+      <a href="{{ url_for('admin.setup_grade_wizard', grade=grade_name, step='teachers') }}"
+         class="text-sm text-slate-500 hover:text-slate-700">← Back</a>
+      <a href="{{ url_for('admin.grades') }}"
+         class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 transition-colors">
+        Finish setup ✓
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

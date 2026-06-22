@@ -14,6 +14,10 @@
        class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-100 transition-colors">
       Import
     </a>
+    <a href="{{ url_for('admin.setup_grade_wizard') }}"
+       class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+      + Set Up New Grade
+    </a>
     {% endif %}
   </div>
 {% endblock %}

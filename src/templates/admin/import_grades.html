@@ -50,9 +50,9 @@ function importGradesWizard() {
       {% for name in succeeded %}
       <li class="flex items-center justify-between px-5 py-2.5">
         <span class="text-sm font-medium text-slate-700">{{ name }}</span>
-        <a href="{{ url_for('admin.subjects', grade=name) }}"
+        <a href="{{ url_for('admin.setup_grade_wizard', grade=name, step='structure') }}"
            class="text-xs font-medium text-indigo-600 hover:text-indigo-500">
-          Set up subjects →
+          Complete setup →
         </a>
       </li>
       {% endfor %}
