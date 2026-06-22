@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classroom Pulse — Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white:       #ffffff;
+    --sidebar-bg:  #ffffff;
+    --body-bg:     #f8fafc;
+    --border:      #e2e8f0;
+    --border-lt:   #f1f5f9;
+    --text-900:    #0f172a;
+    --text-700:    #334155;
+    --text-500:    #64748b;
+    --text-400:    #94a3b8;
+    --indigo-700:  #4338ca;
+    --indigo-600:  #4f46e5;
+    --indigo-500:  #6366f1;
+    --indigo-100:  #e0e7ff;
+    --indigo-50:   #eef2ff;
+    --green-700:   #15803d;
+    --green-100:   #dcfce7;
+    --green-50:    #f0fdf4;
+    --amber-700:   #b45309;
+    --amber-100:   #fef3c7;
+    --amber-50:    #fffbeb;
+    --red-700:     #b91c1c;
+    --red-100:     #fee2e2;
+    --red-50:      #fef2f2;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--body-bg);
+    color: var(--text-700);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 252px;
+    min-width: 252px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-brand {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--border-lt);
+  }
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--indigo-600);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-icon svg { width: 17px; height: 17px; stroke: white; fill: none; }
+  .brand-name {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-900);
+    letter-spacing: -0.01em;
+  }
+  .brand-tagline {
+    font-size: 10.5px;
+    color: var(--text-400);
+    letter-spacing: 0.04em;
+    padding-left: 42px;
+  }
+
+  .nav-section {
+    padding: 16px 12px 6px;
+  }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-400);
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    color: var(--text-500);
+    font-weight: 500;
+    transition: all 0.12s;
+    cursor: pointer;
+  }
+  .nav-link:hover { background: var(--body-bg); color: var(--text-700); }
+  .nav-link.active { background: var(--indigo-50); color: var(--indigo-700); font-weight: 600; }
+  .nav-pip {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.12s;
+  }
+  .nav-link.active .nav-pip { background: var(--indigo-500); }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-lt);
+    font-size: 11px;
+    color: var(--text-400);
+    line-height: 1.5;
+  }
+
+  /* ── Main ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    height: 100vh;
+  }
+
+  .page {
+    display: none;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 48px 96px;
+  }
+  .page.active { display: block; }
+
+  /* ── Page header ── */
+  .page-header {
+    padding-bottom: 28px;
+    margin-bottom: 36px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--indigo-600);
+    margin-bottom: 10px;
+  }
+  .page-title {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-900);
+    line-height: 1.25;
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+  }
+  .page-lead {
+    font-size: 15px;
+    color: var(--text-500);
+    line-height: 1.75;
+    font-weight: 400;
+    max-width: 620px;
+  }
+
+  /* ── Typography ── */
+  h2 {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-900);
+    margin: 40px 0 14px;
+    letter-spacing: -0.01em;
+  }
+  h2:first-of-type { margin-top: 0; }
+  h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-700);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin: 24px 0 10px;
+  }
+  p {
+    color: var(--text-500);
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--text-700); font-weight: 600; }
+  em { font-style: italic; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .card-sm {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-900);
+    margin-bottom: 6px;
+  }
+  .card-body {
+    font-size: 13px;
+    color: var(--text-500);
+    line-height: 1.65;
+  }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: 13.5px;
+    line-height: 1.7;
+    border-left: 3px solid;
+  }
+  .callout-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .callout.note   { background: var(--indigo-50); border-color: var(--indigo-500); color: var(--indigo-700); }
+  .callout.tip    { background: var(--green-50);  border-color: var(--green-700);  color: var(--green-700); }
+  .callout.caution{ background: var(--amber-50);  border-color: var(--amber-700);  color: var(--amber-700); }
+  .callout.warning{ background: var(--red-50);    border-color: var(--red-700);    color: var(--red-700); }
+
+  /* ── Ranking pills ── */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pill-wt  { background: var(--red-50);   border: 1px solid var(--red-100);   color: var(--red-700); }
+  .pill-me  { background: var(--amber-50); border: 1px solid var(--amber-100); color: var(--amber-700); }
+  .pill-ee  { background: var(--green-50); border: 1px solid var(--green-100); color: var(--green-700); }
+  .pill-risk{ background: var(--red-50);   border: 1px solid var(--red-100);   color: var(--red-700);   font-size: 11px; }
+  .pill-warn{ background: var(--amber-50); border: 1px solid var(--amber-100); color: var(--amber-700); font-size: 11px; }
+
+  /* ── Dot indicator ── */
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
+
+  /* ── Process steps ── */
+  .steps { display: flex; flex-direction: column; gap: 1px; margin: 16px 0; }
+  .step {
+    display: flex;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .step-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--indigo-600);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-title { font-size: 13px; font-weight: 600; color: var(--text-900); margin-bottom: 3px; }
+  .step-body  { font-size: 13px; color: var(--text-500); line-height: 1.6; }
+
+  /* ── Role cards ── */
+  .role {
+    border-radius: 10px;
+    border: 1px solid;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+  }
+  .role.admin       { border-color: #c7d2fe; background: #eef2ff; }
+  .role.coordinator { border-color: #c4b5fd; background: #f5f3ff; }
+  .role.incharge    { border-color: #a7f3d0; background: #ecfdf5; }
+  .role.teacher     { border-color: #fde68a; background: #fffbeb; }
+  .role-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .role.admin       .role-name { color: var(--indigo-700); }
+  .role.coordinator .role-name { color: #6d28d9; }
+  .role.incharge    .role-name { color: #065f46; }
+  .role.teacher     .role-name { color: #92400e; }
+  .role-scope { font-size: 12px; margin-bottom: 10px; }
+  .role.admin       .role-scope { color: var(--indigo-600); }
+  .role.coordinator .role-scope { color: #7c3aed; }
+  .role.incharge    .role-scope { color: #059669; }
+  .role.teacher     .role-scope { color: #d97706; }
+  .role-perms { display: flex; flex-wrap: wrap; gap: 5px; }
+  .perm { font-size: 11.5px; padding: 2px 9px; border-radius: 5px; font-weight: 500; }
+  .role.admin       .perm { background: #e0e7ff; color: var(--indigo-700); }
+  .role.coordinator .perm { background: #ede9fe; color: #6d28d9; }
+  .role.incharge    .perm { background: #d1fae5; color: #065f46; }
+  .role.teacher     .perm { background: #fef3c7; color: #92400e; }
+
+  /* ── Comparison table ── */
+  .compare {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  .compare table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .compare th {
+    background: var(--body-bg);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-400);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-lt);
+    color: var(--text-500);
+    vertical-align: middle;
+  }
+  .compare tr:last-child td { border-bottom: none; }
+  .compare tr:hover td { background: var(--body-bg); }
+  .yes  { color: var(--green-700); font-weight: 600; }
+  .no   { color: var(--text-400); }
+  .part { color: var(--amber-700); font-weight: 500; }
+
+  /* ── Inline list ── */
+  .check-list { list-style: none; display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
+  .check-list li { display: flex; gap: 10px; font-size: 13.5px; color: var(--text-500); align-items: flex-start; }
+  .check-list li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--indigo-400); flex-shrink: 0; margin-top: 8px; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid var(--border-lt); margin: 36px 0; }
+
+  /* ── Two-column layout ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+
+  /* ── Tier block ── */
+  .tier-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid;
+    margin-bottom: 8px;
+  }
+  .tier-row.at-risk  { background: var(--red-50);   border-color: var(--red-100);   }
+  .tier-row.warning  { background: var(--amber-50); border-color: var(--amber-100); }
+  .tier-row.on-track { background: var(--green-50); border-color: var(--green-100); }
+  .tier-num { font-size: 22px; font-weight: 800; min-width: 40px; text-align: center; }
+  .tier-row.at-risk  .tier-num { color: var(--red-700); }
+  .tier-row.warning  .tier-num { color: var(--amber-700); }
+  .tier-row.on-track .tier-num { color: var(--green-700); }
+  .tier-label { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .tier-row.at-risk  .tier-label { color: var(--red-700); }
+  .tier-row.warning  .tier-label { color: var(--amber-700); }
+  .tier-row.on-track .tier-label { color: var(--green-700); }
+  .tier-desc { font-size: 12.5px; color: var(--text-500); }
+
+  /* ── Fortnight visual ── */
+  .fortnight-pair {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .ft-half {
+    flex: 1;
+    border-radius: 10px;
+    padding: 16px 20px;
+    border: 1px solid;
+  }
+  .ft-half.p1 { background: var(--indigo-50); border-color: var(--indigo-100); }
+  .ft-half.p2 { background: var(--body-bg); border-color: var(--border); }
+  .ft-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .ft-half.p1 .ft-label { color: var(--indigo-600); }
+  .ft-half.p2 .ft-label { color: var(--text-400); }
+  .ft-dates { font-family: 'Lora', Georgia, serif; font-size: 19px; font-weight: 700; }
+  .ft-half.p1 .ft-dates { color: var(--indigo-700); }
+  .ft-half.p2 .ft-dates { color: var(--text-700); }
+
+  /* ── Decision tree ── */
+  .decision { display: flex; flex-direction: column; gap: 3px; margin: 14px 0; }
+  .decision-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 13px;
+    color: var(--text-500);
+  }
+  .decision-row.outcome-yes { background: var(--green-50); border-color: var(--green-100); color: var(--green-700); font-weight: 600; }
+  .decision-row.outcome-no  { background: var(--red-50);   border-color: var(--red-100);   color: var(--red-700);   font-weight: 600; }
+  .decision-indent { width: 20px; flex-shrink: 0; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-mark">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"/>
+        </svg>
+      </div>
+      <span class="brand-name">Classroom Pulse</span>
+    </div>
+    <div class="brand-tagline">User Guide &amp; Reference</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Getting started</div>
+    <div class="nav-link active" onclick="go('overview',this)"><span class="nav-pip"></span>Overview</div>
+    <div class="nav-link" onclick="go('concepts',this)"><span class="nav-pip"></span>How the system works</div>
+    <div class="nav-link" onclick="go('roles',this)"><span class="nav-pip"></span>Who can do what</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Day-to-day use</div>
+    <div class="nav-link" onclick="go('dashboard',this)"><span class="nav-pip"></span>The Dashboard</div>
+    <div class="nav-link" onclick="go('entry',this)"><span class="nav-pip"></span>Recording rankings</div>
+    <div class="nav-link" onclick="go('atrisk',this)"><span class="nav-pip"></span>At-Risk Watch</div>
+    <div class="nav-link" onclick="go('studentview',this)"><span class="nav-pip"></span>Student profiles</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">School administration</div>
+    <div class="nav-link" onclick="go('grades',this)"><span class="nav-pip"></span>Setting up grades</div>
+    <div class="nav-link" onclick="go('subjects',this)"><span class="nav-pip"></span>Subjects &amp; rubrics</div>
+    <div class="nav-link" onclick="go('students',this)"><span class="nav-pip"></span>Managing students</div>
+    <div class="nav-link" onclick="go('users',this)"><span class="nav-pip"></span>Staff accounts</div>
+    <div class="nav-link" onclick="go('settings',this)"><span class="nav-pip"></span>Academic calendar</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Accountability</div>
+    <div class="nav-link" onclick="go('audit',this)"><span class="nav-pip"></span>Activity records</div>
+  </div>
+
+  <div class="sidebar-footer">
+    Classroom Pulse v1 · For internal use
+  </div>
+</nav>
+
+<!-- ══════════ MAIN ══════════ -->
+<main class="main">
+
+<!-- ── OVERVIEW ── -->
+<div id="pg-overview" class="page active">
+  <div class="page-header">
+    <div class="page-eyebrow">Introduction</div>
+    <h1 class="page-title">What is Classroom Pulse?</h1>
+    <p class="page-lead">Classroom Pulse is a school-wide tracking system that helps teachers and coordinators monitor how each student is progressing across their subjects — fortnight by fortnight, rubric by rubric. It is designed to surface concerns early, long before they appear in formal assessments.</p>
+  </div>
+
+  <h2>The problem it solves</h2>
+  <p>In a busy term, it is easy for a struggling student to go unnoticed until a test reveals the gap. Classroom Pulse gives every teacher a structured place to record a quick assessment every two weeks. Over time, these observations build into a clear picture of where each student stands — and where they may need support.</p>
+
+  <div class="card-grid">
+    <div class="card-sm">
+      <div class="card-title">📅 Fortnightly rhythm</div>
+      <div class="card-body">Assessments happen every two weeks, aligned with school review cycles. Small, regular observations build a rich history.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">🎯 Three-level rankings</div>
+      <div class="card-body">Each rubric gets one of three outcomes. No complex numbers — just a clear, consistent language shared across the school.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">🔴 Automatic early warnings</div>
+      <div class="card-body">The system watches for students who are stuck or slipping. It flags them automatically so teachers can act before the term ends.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">🔐 Role-based access</div>
+      <div class="card-body">Each staff member sees only what is relevant to their responsibilities. A class teacher sees their class; a coordinator sees the whole school.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h2>Who uses this system</h2>
+  <p>Classroom Pulse is built for four types of staff, each with a different relationship to the data. A full breakdown of each role is in the <strong>Who can do what</strong> section.</p>
+
+  <div class="compare">
+    <table>
+      <tr>
+        <th>Role</th>
+        <th>Primary use</th>
+      </tr>
+      <tr><td><strong>Teacher</strong></td><td>Records fortnightly rankings for their assigned subjects and classes</td></tr>
+      <tr><td><strong>In-Charge</strong></td><td>Oversees all activity within their assigned grade; manages the student roster</td></tr>
+      <tr><td><strong>Coordinator</strong></td><td>Views data across the entire school; monitors trends and at-risk patterns</td></tr>
+      <tr><td><strong>Admin</strong></td><td>Configures the system — grades, subjects, rubrics, academic years, and user accounts</td></tr>
+    </table>
+  </div>
+
+  <div class="callout note">
+    <div class="callout-title">A note on data</div>
+    Everything entered into Classroom Pulse is saved permanently and cannot be erased, even by an administrator. This is intentional — it creates a trustworthy record of how student assessments evolved over time.
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<div id="pg-concepts" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Foundations</div>
+    <h1 class="page-title">How the system works</h1>
+    <p class="page-lead">Three ideas underpin everything in Classroom Pulse: the fortnight cycle, the ranking scale, and the at-risk detection logic. Understanding these makes every other feature self-evident.</p>
+  </div>
+
+  <h2>The fortnight</h2>
+  <p>Every calendar month is divided into exactly two assessment windows. This is the smallest unit of time in the system — all data is organised around it.</p>
+
+  <div class="fortnight-pair">
+    <div class="ft-half p1">
+      <div class="ft-label">First period</div>
+      <div class="ft-dates">1st – 15th</div>
+    </div>
+    <div class="ft-half p2">
+      <div class="ft-label">Second period</div>
+      <div class="ft-dates">16th – end of month</div>
+    </div>
+  </div>
+
+  <p>Each fortnight is labelled in plain English (e.g. <em>"1–15 Apr 2026"</em>). Teachers can always navigate backwards to view or complete past fortnights, and the system shows the current one by default.</p>
+
+  <div class="callout note">
+    <div class="callout-title">Why fortnights, not weeks or months?</div>
+    Fortnights align with how most schools already review student work. They are frequent enough to catch early problems, but not so frequent that recording becomes a burden.
+  </div>
+
+  <hr class="divider">
+
+  <h2>The ranking scale</h2>
+  <p>For each rubric, a teacher assigns one of exactly three rankings. The scale is intentionally simple — the goal is consistency across the school, not fine-grained scoring.</p>
+
+  <div style="display:flex;flex-direction:column;gap:10px;margin:16px 0;">
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--red-50);border:1px solid var(--red-100);border-radius:10px;">
+      <span class="pill pill-wt">Working Towards</span>
+      <span style="font-size:13.5px;color:var(--red-700);">The student has not yet reached the expected standard for this rubric. Needs attention or support.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--amber-50);border:1px solid var(--amber-100);border-radius:10px;">
+      <span class="pill pill-me">Meets Expectations</span>
+      <span style="font-size:13.5px;color:var(--amber-700);">The student is performing at the level expected for their year and subject. On track.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--green-50);border:1px solid var(--green-100);border-radius:10px;">
+      <span class="pill pill-ee">Exceeds Expectations</span>
+      <span style="font-size:13.5px;color:var(--green-700);">The student is performing above the expected standard. Demonstrating strong mastery.</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h2>How the system detects at-risk students</h2>
+  <p>Classroom Pulse analyses each student's ranking history for every rubric automatically. It looks for two specific patterns, both of which require at least three consecutive fortnights of data to trigger.</p>
+
+  <div class="two-col" style="margin-bottom:16px;">
+    <div class="card-sm">
+      <div class="card-title" style="color:var(--red-700);">Stuck</div>
+      <div class="card-body">The student has received <em>Working Towards</em> three fortnights in a row for the same rubric, with no improvement.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title" style="color:var(--amber-700);">Declining</div>
+      <div class="card-body">The student's ranking has dropped progressively over the last three fortnights, or they have slipped back to <em>Working Towards</em> from a higher level.</div>
+    </div>
+  </div>
+
+  <p>Once individual rubrics are flagged, the system counts how many are concerning <em>within a single subject</em>, and assigns one of three tiers:</p>
+
+  <div class="tier-row at-risk">
+    <div class="tier-num">3+</div>
+    <div>
+      <div class="tier-label">At Risk</div>
+      <div class="tier-desc">Three or more rubrics in the same subject are stuck or declining. Immediate attention recommended.</div>
+    </div>
+  </div>
+  <div class="tier-row warning">
+    <div class="tier-num">1–2</div>
+    <div>
+      <div class="tier-label">Warning</div>
+      <div class="tier-desc">One or two rubrics in a subject are showing a concerning pattern. Worth monitoring closely.</div>
+    </div>
+  </div>
+  <div class="tier-row on-track">
+    <div class="tier-num">0</div>
+    <div>
+      <div class="tier-label">On Track</div>
+      <div class="tier-desc">No rubrics are flagged in this subject. The student's progress appears healthy.</div>
+    </div>
+  </div>
+
+  <div class="callout caution" style="margin-top:20px;">
+    <div class="callout-title">Important to know</div>
+    A student's overall status reflects their <strong>worst subject</strong>. If they are <em>At Risk</em> in one subject but on track in all others, their profile is marked At Risk. The system is designed to ensure nothing slips through.
+  </div>
+
+  <hr class="divider">
+
+  <h2>Terms and the grace period</h2>
+  <p>The school year is divided into three terms, and coordinators can view data filtered by term. This helps compare a student's performance within a coherent period rather than across the full year.</p>
+
+  <div class="two-col">
+    <div class="card-sm">
+      <div class="card-title">Term 1</div>
+      <div class="card-body" style="color:var(--text-400);">April – September</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Term 2</div>
+      <div class="card-body" style="color:var(--text-400);">October – December</div>
+    </div>
+  </div>
+  <div style="max-width:340px;">
+    <div class="card-sm">
+      <div class="card-title">Term 3</div>
+      <div class="card-body" style="color:var(--text-400);">January – March</div>
+    </div>
+  </div>
+
+  <p style="margin-top:16px;"><strong>Grace period:</strong> After a teacher submits a ranking, they have 48 hours to correct a mistake. After that window closes, the entry is locked and only an administrator can make changes — with a note added to the record automatically.</p>
+</div>
+
+<!-- ── ROLES ── -->
+<div id="pg-roles" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Access &amp; permissions</div>
+    <h1 class="page-title">Who can do what</h1>
+    <p class="page-lead">Every staff member is assigned one or more roles when their account is created. These roles determine what they can see and what they can change. A staff member can hold multiple roles simultaneously.</p>
+  </div>
+
+  <div class="role admin">
+    <div class="role-name">Administrator</div>
+    <div class="role-scope">Full access to everything in the system</div>
+    <div class="role-perms">
+      <span class="perm">All grades &amp; subjects</span>
+      <span class="perm">Record rankings for any class</span>
+      <span class="perm">Create &amp; manage staff accounts</span>
+      <span class="perm">Set up grades, subjects &amp; rubrics</span>
+      <span class="perm">Manage student rosters</span>
+      <span class="perm">Configure academic years &amp; terms</span>
+      <span class="perm">View full activity records</span>
+      <span class="perm">Edit any entry at any time</span>
+    </div>
+  </div>
+
+  <div class="role coordinator">
+    <div class="role-name">Coordinator</div>
+    <div class="role-scope">Can see everything across the school — but cannot change system configuration</div>
+    <div class="role-perms">
+      <span class="perm">View all grades &amp; student data</span>
+      <span class="perm">View activity records</span>
+      <span class="perm">Record rankings if also assigned as a teacher</span>
+    </div>
+  </div>
+
+  <div class="role incharge">
+    <div class="role-name">In-Charge</div>
+    <div class="role-scope">Responsible for one or more grades in their entirety</div>
+    <div class="role-perms">
+      <span class="perm">All subjects in their grade(s)</span>
+      <span class="perm">Record rankings for all subjects in grade</span>
+      <span class="perm">Add, edit &amp; deactivate students in grade</span>
+      <span class="perm">Import student lists</span>
+    </div>
+  </div>
+
+  <div class="role teacher">
+    <div class="role-name">Teacher</div>
+    <div class="role-scope">Assigned to specific subject–grade pairs only</div>
+    <div class="role-perms">
+      <span class="perm">View students in assigned grades</span>
+      <span class="perm">Record rankings for assigned subjects only</span>
+      <span class="perm">View dashboard for assigned grades</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h2>At a glance</h2>
+  <div class="compare">
+    <table>
+      <tr>
+        <th>Capability</th>
+        <th>Admin</th>
+        <th>Coordinator</th>
+        <th>In-Charge</th>
+        <th>Teacher</th>
+      </tr>
+      <tr>
+        <td>View student data</td>
+        <td class="yes">All students</td>
+        <td class="yes">All students</td>
+        <td class="part">Own grade only</td>
+        <td class="part">Own subjects only</td>
+      </tr>
+      <tr>
+        <td>Record rankings</td>
+        <td class="yes">Any subject</td>
+        <td class="part">Assigned subjects</td>
+        <td class="yes">All in grade</td>
+        <td class="part">Assigned subjects</td>
+      </tr>
+      <tr>
+        <td>Correct a past entry</td>
+        <td class="yes">Any time</td>
+        <td class="part">Within 48 hours</td>
+        <td class="part">Within 48 hours</td>
+        <td class="part">Within 48 hours</td>
+      </tr>
+      <tr>
+        <td>Manage student roster</td>
+        <td class="yes">Yes</td>
+        <td class="no">No</td>
+        <td class="part">Own grade</td>
+        <td class="no">No</td>
+      </tr>
+      <tr>
+        <td>Set up grades &amp; subjects</td>
+        <td class="yes">Yes</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+      </tr>
+      <tr>
+        <td>Manage staff accounts</td>
+        <td class="yes">Yes</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+      </tr>
+      <tr>
+        <td>View activity records</td>
+        <td class="yes">Yes</td>
+        <td class="yes">Yes</td>
+        <td class="no">No</td>
+        <td class="no">No</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="pg-dashboard" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Day-to-day use</div>
+    <h1 class="page-title">The Dashboard</h1>
+    <p class="page-lead">The first thing you see after logging in. The Dashboard gives an immediate picture of how a grade is performing across all its subjects for the current fortnight — with trend data and a flag for students who may need support.</p>
+  </div>
+
+  <h2>What the Dashboard shows</h2>
+
+  <div class="card-grid">
+    <div class="card-sm">
+      <div class="card-title">Subject breakdown</div>
+      <div class="card-body">For each subject in the selected grade, the Dashboard shows how many students received each ranking — and what percentage that represents. A simple visual bar makes the proportion immediately readable.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Grade-level summary</div>
+      <div class="card-body">All subjects are rolled up into a single grade percentage: the combined proportion of students who are <em>Meeting</em> or <em>Exceeding Expectations</em>. A small arrow shows whether this has improved or declined since the previous fortnight.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">At-Risk snapshot</div>
+      <div class="card-body">A count of students currently flagged as At Risk or at Warning level, broken down by grade. Clicking through navigates directly to the At-Risk Watch page.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Progress over time</div>
+      <div class="card-body">A chart showing the combined <em>Meets + Exceeds</em> percentage across all past fortnights, up to the one currently selected. This makes trends visible at a glance without needing to scroll through individual entries.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h2>Navigating the Dashboard</h2>
+  <ul class="check-list">
+    <li><strong>Grade selector:</strong> Switch between grades you have access to. Teachers only see their own grades; coordinators and administrators see all.</li>
+    <li><strong>Fortnight selector:</strong> Defaults to the current fortnight. Navigate backwards to review past periods.</li>
+    <li><strong>Trend chart boundary:</strong> The chart never shows future data — only fortnights up to the one you have selected.</li>
+  </ul>
+
+  <div class="callout tip">
+    <div class="callout-title">Tip for coordinators</div>
+    The grade-level summary is a quick health check. If a grade's combined percentage drops noticeably from one fortnight to the next, it is worth reviewing which subjects are pulling it down and whether specific students are behind them.
+  </div>
+</div>
+
+<!-- ── ENTRY ── -->
+<div id="pg-entry" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Day-to-day use</div>
+    <h1 class="page-title">Recording rankings</h1>
+    <p class="page-lead">The entry form is where teachers record their fortnightly assessments. Rankings can be entered directly in the browser, or filled into a downloadable spreadsheet and uploaded in bulk.</p>
+  </div>
+
+  <h2>Using the entry form</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">Select grade, subject &amp; fortnight</div>
+        <div class="step-body">The dropdowns are filtered to what you are permitted to enter. The current fortnight is pre-selected, but you can choose any past period.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">The form loads your class</div>
+        <div class="step-body">All active students appear as rows. Each rubric in the subject appears as a column. Any rankings already saved for this fortnight are pre-filled automatically.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">Assign a ranking for each student and rubric</div>
+        <div class="step-body">Choose <em>Working Towards</em>, <em>Meets Expectations</em>, or <em>Exceeds Expectations</em> for each cell. Optional rubrics (marked as such) can be left blank without issue.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-title">Save</div>
+        <div class="step-body">The system saves each student's data and confirms how many were recorded successfully. If any issues arise, they are described clearly.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-title">Important: all-or-nothing rule</div>
+    For each student, either <strong>all required rubrics must be filled</strong>, or none. If you partially fill a student's rubrics and try to save, the system will flag that student and hold back their data until the form is complete. This ensures no student has an incomplete record.
+  </div>
+
+  <hr class="divider">
+
+  <h2>Using the spreadsheet route</h2>
+  <p>If you prefer to work offline, or if you have a large class to fill in, you can download a pre-formatted spreadsheet, fill it at your own pace, and upload it when ready.</p>
+
+  <div class="two-col">
+    <div class="card-sm">
+      <div class="card-title">Download the template</div>
+      <div class="card-body">From the entry form, click <em>Download template</em>. The file arrives pre-filled with your student names, roll numbers, and rubric headings. Dropdown menus in each cell limit you to the three valid ranking options.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Upload when ready</div>
+      <div class="card-body">Once filled, upload the file from the same screen. The system reads it, validates each row, and reports back: how many were saved, how many were skipped, and whether any rows had problems.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h2>Correcting a past entry</h2>
+  <p>Mistakes happen. The system allows corrections for up to 48 hours after an entry was first saved. After that, the entry is locked to preserve the integrity of the record. If a correction is needed after the window has closed, an administrator can make the change — and a note is automatically added to the activity log recording that an override was made.</p>
+
+  <p>Entries in a <strong>locked term</strong> cannot be edited by anyone except an administrator, regardless of the grace period. Term locking is done deliberately by school leadership at the end of each term to close the record for that period.</p>
+</div>
+
+<!-- ── AT-RISK ── -->
+<div id="pg-atrisk" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Day-to-day use</div>
+    <h1 class="page-title">At-Risk Watch</h1>
+    <p class="page-lead">A dedicated view that collects every student currently showing a concerning pattern — across all grades and subjects — in one place. It is designed to make it easy to prioritise where support is most needed.</p>
+  </div>
+
+  <h2>What it shows</h2>
+  <p>Students are shown in order of concern, with the most serious cases at the top. Each student's card includes:</p>
+
+  <ul class="check-list">
+    <li>Their overall tier — <span class="pill pill-risk">At Risk</span> or <span class="pill pill-warn">Warning</span></li>
+    <li>Which subjects are contributing to the flag</li>
+    <li>Within each subject, which specific rubrics are stuck or declining</li>
+    <li>The history for those rubrics — the last few fortnights at a glance, so you can see the pattern clearly</li>
+  </ul>
+
+  <div class="callout note">
+    <div class="callout-title">Minimum data required</div>
+    The system needs at least three fortnights of data for a rubric before it will flag it. In the first few weeks of a term, the At-Risk page will be quiet — this is expected. It becomes more meaningful from week six onwards.
+  </div>
+
+  <hr class="divider">
+
+  <h2>Filtering the list</h2>
+  <p>Four filters help you focus on what is most relevant to your role:</p>
+
+  <div class="two-col">
+    <div class="card-sm">
+      <div class="card-title">By grade</div>
+      <div class="card-body">See only students from a particular grade. In-Charge staff automatically see only their own grade.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">By subject</div>
+      <div class="card-body">Filter to students with a concern in a specific subject — useful for heads of department.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">By tier</div>
+      <div class="card-body">Show only At-Risk students, or only Warning students, to prioritise your attention.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">By term</div>
+      <div class="card-body">Look back at previous terms to understand how patterns evolved over the year.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STUDENT VIEW ── -->
+<div id="pg-studentview" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Day-to-day use</div>
+    <h1 class="page-title">Student profiles</h1>
+    <p class="page-lead">Each student has a dedicated profile page showing their complete assessment history across every subject and rubric — formatted as a clear timeline so patterns are immediately visible.</p>
+  </div>
+
+  <h2>What a student profile includes</h2>
+  <ul class="check-list">
+    <li><strong>Student details:</strong> Name, roll number, grade, and whether they are currently active.</li>
+    <li><strong>Subject summaries:</strong> Each subject shows the student's current tier (At Risk, Warning, or on track) and how many rubrics are flagged.</li>
+    <li><strong>Rubric history table:</strong> For each subject, a table shows one row per rubric and one column per fortnight — with each cell colour-coded by ranking. Declining or stuck patterns are immediately visible as a sequence of red cells.</li>
+    <li><strong>Term filter:</strong> Switch between terms to compare periods.</li>
+    <li><strong>Student navigation:</strong> Move to the previous or next student in the grade without going back to a list.</li>
+  </ul>
+
+  <div class="callout caution">
+    <div class="callout-title">Access note</div>
+    A teacher can view profiles only for students in grades where they have an assignment. An In-Charge staff member can view all students in their grade. Coordinators and administrators can view every student.
+  </div>
+</div>
+
+<!-- ── GRADES ── -->
+<div id="pg-grades" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">School administration</div>
+    <h1 class="page-title">Setting up grades</h1>
+    <p class="page-lead">Before any data can be recorded, each grade must be set up with its subjects, rubrics, and teacher assignments. The Setup Wizard walks through this process step by step.</p>
+  </div>
+
+  <h2>Three ways to create a grade</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">A</div>
+      <div>
+        <div class="step-title">Quick add — name only</div>
+        <div class="step-body">Type a grade name directly on the Grades page and click Add. This creates the grade immediately, but subjects and rubrics still need to be added separately before it is usable.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">B</div>
+      <div>
+        <div class="step-title">Composite import — grade, subjects &amp; rubrics together</div>
+        <div class="step-body">Upload a single spreadsheet with three sheets: one for the grade name, one listing all subjects, and one listing all rubrics for each subject (with a Y/N column for whether each rubric is required). Everything is created in one step, with the Setup Wizard opening automatically afterwards.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">C</div>
+      <div>
+        <div class="step-title">Grade list import — multiple grades at once</div>
+        <div class="step-body">Upload a single-column spreadsheet of grade names to create several grades in one go. Subjects and rubrics are then added separately for each.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h2>The Setup Wizard</h2>
+  <p>After a grade's subjects and rubrics exist, the Setup Wizard guides you through the remaining steps before the grade is ready for teachers to use.</p>
+
+  <div style="display:flex;gap:10px;margin:16px 0;">
+    <div style="flex:1;background:var(--indigo-50);border:1px solid var(--indigo-100);border-radius:10px;padding:16px;">
+      <div class="card-title" style="color:var(--indigo-700);">Step 1 · Structure</div>
+      <div class="card-body">Review the grade name and the list of subjects that have been set up. A read-only confirmation before you proceed.</div>
+    </div>
+    <div style="flex:1;background:var(--body-bg);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div class="card-title">Step 2 · Assign teachers</div>
+      <div class="card-body">For each subject, select which staff members are responsible for recording rankings. A searchable dropdown makes this quick even for large schools.</div>
+    </div>
+    <div style="flex:1;background:var(--body-bg);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div class="card-title">Step 3 · Students</div>
+      <div class="card-body">Import the student roll for this grade via spreadsheet, or add students individually.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <h2>Removing a grade</h2>
+  <p>A grade can only be deleted if it has no active students — student records carry assessment data that must be preserved. When a grade <em>is</em> deleted, all of its subjects, rubrics, and teacher assignments are removed in the correct order automatically.</p>
+
+  <div class="callout caution">
+    <div class="callout-title">If a grade was partially set up and needs re-importing</div>
+    If you upload a composite import file for a grade that already exists (even partially), the system will not overwrite it silently. Instead, it offers two options: continue setting up from where you left off, or delete the existing grade and start fresh. You choose.
+  </div>
+</div>
+
+<!-- ── SUBJECTS & RUBRICS ── -->
+<div id="pg-subjects" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">School administration</div>
+    <h1 class="page-title">Subjects &amp; rubrics</h1>
+    <p class="page-lead">Each grade is divided into subjects, and each subject is assessed through a set of rubrics. Rubrics are the individual skills or criteria that teachers evaluate every fortnight.</p>
+  </div>
+
+  <h2>Subjects</h2>
+  <p>A subject belongs to exactly one grade. Two grades can both have a "Mathematics" subject — they are treated as entirely separate, each with their own rubrics and teacher assignments.</p>
+
+  <ul class="check-list">
+    <li>Subjects can be added individually or imported from a spreadsheet (one per row)</li>
+    <li>A subject can be <em>deactivated</em> rather than deleted — this hides it from active use while preserving all historical assessment data</li>
+    <li>Deactivated subjects can be reactivated at any time</li>
+  </ul>
+
+  <hr class="divider">
+
+  <h2>Rubrics</h2>
+  <p>A rubric is a specific, assessable criterion within a subject. For example, within Mathematics, rubrics might include <em>Number sense</em>, <em>Problem solving</em>, and <em>Written working</em>. Each fortnight, teachers assign a ranking to every rubric for every student.</p>
+
+  <h3>Required vs optional rubrics</h3>
+  <p><strong>Required rubrics</strong> must be filled in for every student each time a teacher submits. Leaving any of them blank for a student is not permitted — the system will flag the omission. This ensures the record is always complete for core skills.</p>
+  <p><strong>Optional rubrics</strong> are marked with an "(Optional)" label in the entry form. Teachers can leave these blank without triggering any error. They are useful for enrichment activities or skills that are assessed only at certain points in the year.</p>
+
+  <h3>Ordering rubrics</h3>
+  <p>Rubrics within a subject can be reordered using the move-up and move-down controls. The order set here is the order teachers see when filling in the entry form, so it is worth arranging core skills first.</p>
+
+  <h3>Minimum rubric requirement</h3>
+  <p>At least one active rubric must remain in a subject at all times. If only one rubric remains, it cannot be deactivated.</p>
+
+  <div class="callout tip">
+    <div class="callout-title">Tip</div>
+    When designing rubrics, aim for a set that can be meaningfully assessed every two weeks. Rubrics that are too general will produce uniform rankings; rubrics that are too specific may not be observable every fortnight.
+  </div>
+</div>
+
+<!-- ── STUDENTS ── -->
+<div id="pg-students" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">School administration</div>
+    <h1 class="page-title">Managing students</h1>
+    <p class="page-lead">The student roster determines who appears in entry forms and dashboards. Administrators manage the full school; In-Charge staff manage their own grade.</p>
+  </div>
+
+  <h2>Adding students</h2>
+  <p>Students can be added one at a time or imported in bulk from a spreadsheet. Each student record includes their full name, roll number (optional but recommended for sorting), and grade.</p>
+
+  <div class="callout note">
+    <div class="callout-title">Bulk import rules</div>
+    The spreadsheet must have a Name column and a Roll Number column. Roll numbers must be unique within a grade — the system checks for duplicates both within the file and against the existing roster, and reports any conflicts before saving.
+  </div>
+
+  <hr class="divider">
+
+  <h2>Deactivating a student</h2>
+  <p>When a student leaves the school or transfers to another grade, they should be <strong>deactivated</strong> rather than deleted. Deactivation removes them from all entry forms and dashboards immediately, while preserving every assessment they have ever received. This is important for continuity — a mid-year transfer should not erase their record.</p>
+
+  <p>A deactivated student's profile can still be viewed directly if needed. Their history remains fully intact.</p>
+
+  <div class="callout warning">
+    <div class="callout-title">Students cannot be deleted</div>
+    Once a student has any assessment data attached to their record, they cannot be permanently removed from the system. Deactivation is the correct tool for managing students who have left.
+  </div>
+</div>
+
+<!-- ── USERS ── -->
+<div id="pg-users" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">School administration</div>
+    <h1 class="page-title">Staff accounts</h1>
+    <p class="page-lead">Each staff member who uses Classroom Pulse needs an account. Administrators create and manage accounts, assign roles, and can reset passwords or suspend access at any time.</p>
+  </div>
+
+  <h2>Creating an account</h2>
+  <p>Each account requires a username and an initial password. At the same time, the administrator selects the staff member's roles. These can be changed at any time after creation.</p>
+
+  <hr class="divider">
+
+  <h2>Assigning roles</h2>
+  <p>Roles are assigned through a structured checklist on the account page:</p>
+
+  <ul class="check-list">
+    <li><strong>Global roles</strong> (Administrator, Coordinator) are a simple tick — they apply across the whole school</li>
+    <li><strong>In-Charge</strong> is selected per grade — a staff member can be In-Charge of more than one grade</li>
+    <li><strong>Teacher</strong> is selected per subject within a grade — a staff member might teach Mathematics in Grade 5 and Science in Grade 6, for example</li>
+  </ul>
+
+  <p>When roles are saved, the previous set is replaced entirely. This makes it straightforward to reassign a staff member at the start of a new year — simply update the selections and save.</p>
+
+  <hr class="divider">
+
+  <h2>Suspending access</h2>
+  <p>If a staff member leaves the school, their account can be deactivated. They will be unable to log in, but their name will still appear in activity records and audit logs where they previously made entries. This preserves accountability.</p>
+
+  <div class="callout caution">
+    <div class="callout-title">The last administrator cannot be deactivated</div>
+    The system will not allow the sole remaining administrator account to be suspended or to have its administrator role removed. This prevents the school from being locked out of system administration.
+  </div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div id="pg-settings" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">School administration</div>
+    <h1 class="page-title">Academic calendar</h1>
+    <p class="page-lead">The academic year and term structure tells the system how to organise and date-stamp everything. One year is marked "current" at a time, and within it, three terms define the boundaries the system uses for filtering and analysis.</p>
+  </div>
+
+  <h2>Academic years</h2>
+  <p>Each academic year is identified by a label (e.g. <em>2026–27</em>) and runs from April through to March the following year. Multiple years can exist in the system simultaneously — useful for retaining previous year data while the current year is active.</p>
+
+  <ul class="check-list">
+    <li>Create a new year by entering the starting year (e.g. typing "2026" creates the 2026–27 year)</li>
+    <li>Three default terms are pre-created and can be adjusted immediately after</li>
+    <li>Only one year can be marked as <em>Current</em> — this is what the dashboard and at-risk pages default to</li>
+    <li>Past years remain accessible for review and can be re-activated if needed</li>
+  </ul>
+
+  <hr class="divider">
+
+  <h2>Term boundaries</h2>
+  <p>Term start and end dates can be adjusted on the year's edit page. The system shows the duration in weeks next to each term as a quick sanity check. Dates must be in the correct order — start before end.</p>
+
+  <hr class="divider">
+
+  <h2>Locking a term</h2>
+  <p>At the end of a term, an administrator can lock it. A locked term prevents anyone — teachers, in-charge staff, or coordinators — from editing any assessments within that term period. This closes the record for that term in a definitive way, suitable for reporting or parent communication.</p>
+
+  <div class="callout warning">
+    <div class="callout-title">Locking is significant</div>
+    Once a term is locked, no teacher can make corrections to entries from that period. Only an administrator can unlock a term, and doing so is a deliberate action. Lock a term only when you are confident the assessment data is final.
+  </div>
+
+  <hr class="divider">
+
+  <h2>The grace period setting</h2>
+  <p>The grace period — how long after submitting a ranking a teacher may still edit it — is configurable. The default is 48 hours, which suits most schools. It can be shortened (e.g. to 24 hours) or extended if the school's review process requires it. Setting it to zero makes all entries immediately permanent, with corrections only possible through an administrator.</p>
+</div>
+
+<!-- ── AUDIT ── -->
+<div id="pg-audit" class="page">
+  <div class="page-header">
+    <div class="page-eyebrow">Accountability</div>
+    <h1 class="page-title">Activity records</h1>
+    <p class="page-lead">Every action taken in Classroom Pulse — every ranking recorded, every account changed, every setting adjusted — is logged automatically and permanently. These records are available to administrators and coordinators.</p>
+  </div>
+
+  <h2>What is recorded</h2>
+  <div class="compare">
+    <table>
+      <tr><th>Action</th><th>What the record shows</th></tr>
+      <tr><td>A ranking is recorded or changed</td><td>Which student, which subject and rubric, which fortnight, what the ranking was (and what it was before, if changed)</td></tr>
+      <tr><td>A staff account is created or modified</td><td>Which account, and what changed (new user, roles updated, status toggled)</td></tr>
+      <tr><td>A grade, subject, rubric, or student is added or removed</td><td>What was added or removed, and by whom</td></tr>
+      <tr><td>An academic year or term is changed</td><td>Which year or term, and what action was taken (created, activated, locked, deleted)</td></tr>
+      <tr><td>An administrator overrides a locked entry</td><td>The same as a standard edit, plus a clear note reading "Admin override"</td></tr>
+      <tr><td>The grace period is adjusted</td><td>The previous value and the new value</td></tr>
+    </table>
+  </div>
+
+  <hr class="divider">
+
+  <h2>Viewing activity records</h2>
+  <p>Records are displayed in reverse chronological order, fifty at a time. Four filters help narrow down what you are looking for:</p>
+
+  <div class="two-col">
+    <div class="card-sm">
+      <div class="card-title">Date range</div>
+      <div class="card-body">Defaults to the current week. You can set any date range to review a specific period.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Staff member</div>
+      <div class="card-body">Filter to see only the actions taken by a specific person — useful for reviewing an individual's activity.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Action type</div>
+      <div class="card-body">Filter to see only new entries, only edits, or only deletions.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-title">Pagination</div>
+      <div class="card-body">Fifty records per page. Use the navigation at the bottom of the list to move through large result sets.</div>
+    </div>
+  </div>
+
+  <div class="callout note">
+    <div class="callout-title">These records cannot be deleted</div>
+    Activity records are permanent by design. No user — including administrators — can remove or alter a log entry. This ensures the record of what happened in the system is always trustworthy and complete.
+  </div>
+</div>
+
+</main>
+
+<script>
+  function go(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+    document.getElementById('pg-' + id).classList.add('active');
+    el.classList.add('active');
+    document.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

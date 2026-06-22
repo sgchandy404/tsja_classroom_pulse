@@ -9,6 +9,8 @@ services:
       # Override SECRET_KEY and ADMIN_PASSWORD via a .env file on the host
       SECRET_KEY: ${SECRET_KEY}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
+      # Set to 1 in .env on the host to load demo data on first run (dev only)
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-0}
     volumes:
       - ./data:/data
     networks:
