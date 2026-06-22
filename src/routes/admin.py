@@ -1344,7 +1344,7 @@ def export_rubrics():
     wb.save(buf)
     buf.seek(0)
 
-    if subject_id_raw and not is_template:
+    if subject_id_raw:
         subj = db.session.get(Subject, int(subject_id_raw))
         label = f"{subj.grade.replace(' ','_')}_{subj.name.replace(' ','_')}" if subj else "Unknown"
     elif grade_filter:
