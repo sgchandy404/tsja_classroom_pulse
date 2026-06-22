@@ -316,9 +316,13 @@ def import_rankings():
         return redirect(url_for("entry.form"))
 
     saved = skipped = invalid = 0
+    required_rubric_ids = {r.id for r in subject.rubrics if r.is_active and r.is_required}
+    # track which students are missing at least one required rubric after import
+    students_incomplete = set()
 
     for row_offset, student_id in enumerate(student_ids):
         xl_row = row_offset + 2  # data starts at row 2
+        filled_required = set()
         for col_offset, rubric_id in enumerate(rubric_ids):
             xl_col  = col_offset + 3  # data starts at col 3
             raw_val = ws.cell(xl_row, xl_col).value
@@ -361,12 +365,20 @@ def import_rankings():
                 log_audit(user=current_user, action="create", model_name="FortnightEntry", record_id=entry.id,
                           field_name="ranking", old_value=None, new_value=ranking)
             saved += 1
+            if rubric_id in required_rubric_ids:
+                filled_required.add(rubric_id)
+
+        if filled_required < required_rubric_ids:
+            students_incomplete.add(student_id)
 
     db.session.commit()
 
     period_label = fortnight_label(ft_year, ft_month, ft_period)
+    complete_count = len(student_ids) - len(students_incomplete)
     if saved:
-        flash(f"Imported {saved} ranking(s) for {subject.name} · {period_label}.", "success")
+        flash(f"Imported rankings for {complete_count} of {len(student_ids)} students · {subject.name} · {period_label}.", "success")
+    if students_incomplete:
+        flash(f"{len(students_incomplete)} student(s) still have incomplete required rubrics - finish them manually.", "warning")
     if invalid:
         flash(f"{invalid} cell(s) had unrecognised values and were skipped.", "error")
 
@@ -397,28 +409,18 @@ def submit():
         flash("No rankings submitted.", "error")
         return redirect(url_for("entry.form"))
 
-    # Validate required rubrics aren't left blank (except for optional)
-    missing_required = []
-    for (student_id, rubric_id), ranking in raw_entries.items():
-        if ranking is None:
-            rubric = db.session.get(Rubric, rubric_id)
-            if rubric and rubric.is_required:
-                missing_required.append(rubric.name)
-
-    if missing_required:
-        names = ", ".join(sorted(set(missing_required)))
-        flash(f"Required rubrics left blank: {names}. Please complete them or leave optional rubrics blank.", "error")
-        return redirect(url_for("entry.form"))
-
     saved = 0
     locked = 0
     denied = 0
     skipped = 0
+    incomplete_students = set()
     now = datetime.datetime.utcnow()
 
     for (student_id, rubric_id), ranking in raw_entries.items():
-        # Skip blanks for optional rubrics — they're intentionally unassessed
         if ranking is None:
+            rubric = db.session.get(Rubric, rubric_id)
+            if rubric and rubric.is_required:
+                incomplete_students.add(student_id)
             skipped += 1
             continue
 
@@ -488,6 +490,8 @@ def submit():
     period_label = fortnight_label(ft_year, ft_month, ft_period)
     if saved:
         flash(f"Saved {saved} ranking(s) for {period_label}.", "success")
+    if incomplete_students:
+        flash(f"{len(incomplete_students)} student(s) still have incomplete required rubrics - fill them in to complete the record.", "warning")
     if locked:
         flash(f"{locked} entry/entries were locked (grace period expired or term locked).", "error")
     if denied:

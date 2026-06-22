@@ -309,6 +309,7 @@
               <div class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm
                           {% if category == 'error' %}bg-red-50 text-red-700 ring-1 ring-red-200
                           {% elif category == 'success' %}bg-green-50 text-green-700 ring-1 ring-green-200
+                          {% elif category == 'warning' %}bg-amber-50 text-amber-700 ring-1 ring-amber-200
                           {% else %}bg-brand-50 text-brand-700 ring-1 ring-brand-100{% endif %}">
                 {{ message }}
               </div>
