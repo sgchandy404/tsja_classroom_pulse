@@ -146,7 +146,7 @@
 
         <form x-ref="importForm" method="POST" action="{{ url_for('entry.import_rankings') }}" enctype="multipart/form-data">
           <input x-ref="importFile" type="file" name="xlsx_file" accept=".xlsx" class="hidden"
-                 @change="$refs.importForm.submit()" />
+                 @change="submitted = true; $refs.importForm.submit()" />
           <button type="button" @click="importing = true"
                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5
                          text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
