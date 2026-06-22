@@ -448,7 +448,8 @@ function entryForm() {
         try {
           const draft = JSON.parse(raw);
           this.rankings      = { ...serverData, ...draft };
-          this.draftRestored = Object.keys(draft).length;
+          // Only count entries that differ from what's already saved on the server
+          this.draftRestored = Object.keys(draft).filter(k => draft[k] !== serverData[k]).length;
         } catch {
           this.rankings      = serverData;
           this.draftRestored = 0;
