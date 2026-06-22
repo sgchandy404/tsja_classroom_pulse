@@ -61,7 +61,7 @@
             <span class="text-xs font-semibold {% if t.is_locked %}text-red-700{% else %}text-slate-700{% endif %}">{{ t.name }}</span>
             <span class="text-[10px] text-slate-400">
               {% if t.start_date and t.end_date %}
-                {{ t.start_date.strftime('%-d %b') }} – {{ t.end_date.strftime('%-d %b %Y') }}
+                {{ t.start_date.strftime('%d %b').lstrip('0') }} – {{ t.end_date.strftime('%d %b %Y').lstrip('0') }}
               {% else %}
                 Not set
               {% endif %}
