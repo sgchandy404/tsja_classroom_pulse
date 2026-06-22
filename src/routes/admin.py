@@ -2,7 +2,9 @@
 Admin blueprint — user management, grade/subject management, app config.
 All routes require the 'admin' role.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+import io
+import openpyxl
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
 from models import db, User, UserRole, Subject, Student, Grade, Rubric, AppConfig, FortnightEntry, ROLES
 from permissions import require_role, log_audit, perms as get_perms
@@ -531,6 +533,202 @@ def reactivate_student(student_id):
     db.session.commit()
     flash(f"Student '{student.name}' reactivated.", "success")
     return redirect(url_for("admin.students", grade=student.grade))
+
+
+@admin_bp.route("/students/import", methods=["GET", "POST"])
+@login_required
+@require_role("admin", "incharge")
+def import_students():
+    p = get_perms()
+    mg = p.manageable_grades()
+    manageable = _all_grades() if mg is None else sorted(mg)
+
+    if request.method == "GET":
+        return render_template("admin/import_students.html",
+                               manageable_grades=manageable,
+                               preselect_grade=request.args.get("grade", ""))
+
+    grade = request.form.get("grade", "").strip()
+    if not grade:
+        flash("Please select a grade.", "error")
+        return render_template("admin/import_students.html",
+                               manageable_grades=manageable,
+                               preselect_grade="")
+
+    if not p.can_manage_students(grade):
+        abort(403)
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("No file selected.", "error")
+        return render_template("admin/import_students.html",
+                               manageable_grades=manageable,
+                               preselect_grade=grade)
+
+    try:
+        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    except Exception:
+        flash("Could not read the file. Please upload a valid .xlsx file.", "error")
+        return render_template("admin/import_students.html",
+                               manageable_grades=manageable,
+                               preselect_grade=grade)
+
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+
+    # Existing active roll numbers for duplicate checking against DB
+    existing_rolls = {
+        s.roll_number.strip().lower()
+        for s in Student.query.filter_by(grade=grade, is_active=True).all()
+        if s.roll_number
+    }
+
+    succeeded = []
+    failed = []
+    seen_rolls_in_file = {}  # roll -> first row number (1-indexed for display)
+
+    for idx, row in enumerate(rows, start=2):
+        name = str(row[0]).strip() if row[0] is not None else ""
+        roll = str(row[1]).strip() if row[1] is not None else ""
+
+        if not name and not roll:
+            continue  # blank row, skip silently
+
+        row_errors = []
+        if not name:
+            row_errors.append("Name is required")
+        if not roll:
+            row_errors.append("Roll Number is required")
+        elif roll.lower() in existing_rolls:
+            row_errors.append(f"Roll Number '{roll}' already exists in {grade}")
+        elif roll.lower() in seen_rolls_in_file:
+            row_errors.append(
+                f"Roll Number '{roll}' duplicated in this file (first seen row {seen_rolls_in_file[roll.lower()]})"
+            )
+
+        if row_errors:
+            failed.append({"row": idx, "name": name or "(blank)", "roll": roll or "(blank)",
+                           "reasons": row_errors})
+        else:
+            seen_rolls_in_file[roll.lower()] = idx
+            succeeded.append({"name": name, "roll": roll})
+
+    if succeeded:
+        for item in succeeded:
+            student = Student(name=item["name"], roll_number=item["roll"],
+                              grade=grade, is_active=True)
+            db.session.add(student)
+
+        db.session.flush()
+        log_audit(
+            user=current_user,
+            action="create",
+            model_name="Student",
+            record_id=0,
+            field_name="bulk_import",
+            new_value=f"{len(succeeded)} students imported into {grade}; {len(failed)} failed",
+            note=f"File: {file.filename}",
+        )
+        db.session.commit()
+
+    if succeeded and not failed:
+        flash(f"Imported {len(succeeded)} student(s) into {grade}.", "success")
+    elif succeeded and failed:
+        flash(
+            f"Imported {len(succeeded)} student(s) into {grade}. "
+            f"{len(failed)} row(s) had errors - see details below.",
+            "warning",
+        )
+    else:
+        flash(f"No students imported. {len(failed)} row(s) had errors - see details below.", "error")
+
+    return render_template("admin/import_students.html",
+                           manageable_grades=manageable,
+                           preselect_grade=grade,
+                           succeeded_count=len(succeeded),
+                           failed_rows=failed)
+
+
+@admin_bp.route("/students/export")
+@login_required
+@require_role("admin", "incharge", "coordinator", "teacher")
+def export_students():
+    p = get_perms()
+    mg = p.manageable_grades()
+
+    grade_filter = request.args.get("grade", "").strip()
+
+    # Teachers: restrict to grades they have assignments for (same as visible_grades)
+    if not p.is_admin and not any(r.role == "incharge" for r in p._roles):
+        visible = p.visible_grades()
+        if visible is None:
+            pass  # coordinator / shouldn't reach here
+        else:
+            if grade_filter and grade_filter not in visible:
+                abort(403)
+            if not grade_filter:
+                # Export all their visible grades
+                mg = visible
+
+    q = Student.query
+    if mg is not None:
+        q = q.filter(Student.grade.in_(list(mg)))
+    if grade_filter:
+        if mg is not None and grade_filter not in mg:
+            abort(403)
+        q = q.filter_by(grade=grade_filter)
+
+    students = q.order_by(Student.grade, Student.name).all()
+
+    is_template = request.args.get("template") == "1"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Students"
+
+    header_font = openpyxl.styles.Font(bold=True)
+
+    if is_template:
+        headers = ["Name", "Roll Number"]
+        for col, h in enumerate(headers, start=1):
+            ws.cell(row=1, column=col, value=h).font = header_font
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 15
+    else:
+        headers = ["Name", "Roll Number", "Grade", "Status"]
+        for col, h in enumerate(headers, start=1):
+            ws.cell(row=1, column=col, value=h).font = header_font
+        for row_idx, s in enumerate(students, start=2):
+            ws.cell(row=row_idx, column=1, value=s.name)
+            ws.cell(row=row_idx, column=2, value=s.roll_number or "")
+            ws.cell(row=row_idx, column=3, value=s.grade)
+            ws.cell(row=row_idx, column=4, value="Active" if s.is_active else "Inactive")
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 15
+        ws.column_dimensions["C"].width = 15
+        ws.column_dimensions["D"].width = 12
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    grade_part = grade_filter.replace(" ", "_") if grade_filter else "All_Grades"
+    filename = (f"TEMPLATE_Students_{grade_part}.xlsx" if is_template
+                else f"Students_{grade_part}.xlsx")
+
+    if not is_template:
+        log_audit(
+            user=current_user,
+            action="create",
+            model_name="Student",
+            record_id=0,
+            field_name="export",
+            new_value=f"Exported {len(students)} students ({grade_part})",
+        )
+        db.session.commit()
+
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 # ---------------------------------------------------------------------------

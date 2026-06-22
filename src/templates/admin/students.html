@@ -4,10 +4,20 @@
 {% block page_title %}Student Management{% endblock %}
 
 {% block header_actions %}
-  <a href="{{ url_for('admin.new_student', grade=grade_filter) }}"
-     class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
-    + New Student
-  </a>
+  <div class="flex items-center gap-2">
+    <a href="{{ url_for('admin.export_students', grade=grade_filter) }}"
+       class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">
+      Export
+    </a>
+    <a href="{{ url_for('admin.import_students', grade=grade_filter) }}"
+       class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-100 transition-colors">
+      Import
+    </a>
+    <a href="{{ url_for('admin.new_student', grade=grade_filter) }}"
+       class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+      + New Student
+    </a>
+  </div>
 {% endblock %}
 
 {% block content %}
