@@ -19,15 +19,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="space-y-6 max-w-2xl">
+<div class="space-y-4 max-w-2xl">
 
   {% if perms.is_admin %}
   {# ── Featured: Set Up New Grade ── #}
   <div class="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white shadow-sm px-6 py-5">
-    {# Decorative rings #}
     <div class="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-indigo-100/50"></div>
     <div class="pointer-events-none absolute -right-2 -top-2 h-24 w-24 rounded-full bg-indigo-100/40"></div>
-
     <div class="relative flex flex-col sm:flex-row sm:items-center gap-5">
       <div class="flex-1">
         <span class="text-xs font-semibold uppercase tracking-widest text-indigo-400">Recommended</span>
@@ -57,6 +55,29 @@
       </div>
     </div>
   </div>
+
+  {# ── Quick add (secondary) ── #}
+  <details class="group rounded-xl border border-slate-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer items-center justify-between px-5 py-3.5 text-sm font-medium text-slate-500
+                    hover:text-slate-700 transition-colors list-none">
+      <span>Add a grade name only (no wizard)</span>
+      <svg class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+      </svg>
+    </summary>
+    <div class="border-t border-slate-100 px-5 py-4">
+      <form method="POST" action="{{ url_for('admin.new_grade') }}" class="flex gap-3">
+        <input type="text" name="name" placeholder="e.g. Grade 9A" required
+               class="flex-1 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
+                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+        <button type="submit"
+                class="rounded-lg bg-slate-700 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-600 transition-colors">
+          Add Grade
+        </button>
+      </form>
+      <p class="mt-2 text-xs text-slate-400">Creates the grade with no subjects, rubrics, or students. You'll need to set those up separately.</p>
+    </div>
+  </details>
   {% endif %}
 
   {# ── Grade list ── #}
@@ -116,31 +137,6 @@
       </tbody>
     </table>
   </div>
-
-  {# ── Quick add (secondary) ── #}
-  {% if perms.is_admin %}
-  <details class="group rounded-xl border border-slate-200 bg-white shadow-sm">
-    <summary class="flex cursor-pointer items-center justify-between px-5 py-3.5 text-sm font-medium text-slate-500
-                    hover:text-slate-700 transition-colors list-none">
-      <span>Add a grade name only (no wizard)</span>
-      <svg class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-      </svg>
-    </summary>
-    <div class="border-t border-slate-100 px-5 py-4">
-      <form method="POST" action="{{ url_for('admin.new_grade') }}" class="flex gap-3">
-        <input type="text" name="name" placeholder="e.g. Grade 9A" required
-               class="flex-1 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 shadow-sm
-                      focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-        <button type="submit"
-                class="rounded-lg bg-slate-700 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-600 transition-colors">
-          Add Grade
-        </button>
-      </form>
-      <p class="mt-2 text-xs text-slate-400">Creates the grade with no subjects, rubrics, or students. You'll need to set those up separately.</p>
-    </div>
-  </details>
-  {% endif %}
 
 </div>
 {% endblock %}
