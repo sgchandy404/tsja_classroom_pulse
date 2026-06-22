@@ -750,6 +750,7 @@ def setup_grade_wizard():
     subjects = Subject.query.filter_by(grade=grade_name, is_active=True).order_by(Subject.name).all() if grade else []
     active_grades = _all_grades()
     all_users = User.query.filter_by(active=True).order_by(User.username).all()
+    users_data = [{"id": u.id, "name": u.username} for u in all_users]
 
     # Current teacher assignments: subject_id → [user_id, ...]
     current_assignments: dict = {}
@@ -772,7 +773,7 @@ def setup_grade_wizard():
                     pass
 
         db.session.commit()
-        log_audit(action="edit", model_name="UserRole",
+        log_audit(user=current_user, action="edit", model_name="UserRole",
                   record_id=0, note=f"Wizard: teacher assignments saved for {grade_name}")
         return redirect(url_for("admin.setup_grade_wizard", grade=grade_name, step="students"))
 
@@ -783,6 +784,7 @@ def setup_grade_wizard():
                            subjects=subjects,
                            active_grades=active_grades,
                            all_users=all_users,
+                           users_data=users_data,
                            current_assignments=current_assignments)
 
 

@@ -181,16 +181,11 @@ function teacherPicker(subjectId, allUsers, preselected) {
   </div>
   {% else %}
 
-  {# Prepare data for Alpine — serialise once #}
-  {% set all_users_json = all_users | map(attribute='id') | list %}
-  {% set users_data = [] %}
-  {% for u in all_users %}{% set _ = users_data.append({'id': u.id, 'name': u.username}) %}{% endfor %}
-
   <form method="POST" action="{{ url_for('admin.setup_grade_wizard', grade=grade_name, step='teachers') }}"
         class="space-y-3">
 
-    <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+    <div class="rounded-2xl border border-white/60 bg-white/80 shadow-md backdrop-blur-sm ring-1 ring-slate-900/5">
+      <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white rounded-t-2xl">
         <p class="text-sm font-semibold text-slate-800">Assign teachers — {{ grade.name }}</p>
         <p class="text-xs text-slate-400 mt-0.5">Search and select one or more teachers per subject. You can change these later.</p>
       </div>
@@ -198,10 +193,7 @@ function teacherPicker(subjectId, allUsers, preselected) {
       {% if subjects %}
       <div class="divide-y divide-slate-100">
         {% for subj in subjects %}
-        {% set pre = [] %}
-        {% for u in all_users %}
-          {% if u.id in current_assignments.get(subj.id, []) %}{% set _ = pre.append({'id': u.id, 'name': u.username}) %}{% endif %}
-        {% endfor %}
+        {% set pre = users_data | selectattr('id', 'in', current_assignments.get(subj.id, [])) | list %}
         <div class="px-5 py-4"
              x-data="teacherPicker({{ subj.id }}, {{ users_data | tojson }}, {{ pre | tojson }})"
              @click.outside="open = false">
@@ -232,7 +224,7 @@ function teacherPicker(subjectId, allUsers, preselected) {
                           focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300 transition-colors" />
 
             {# Dropdown #}
-            <div x-show="open && filtered.length > 0" x-cloak
+            <div x-show="open && filtered.length > 0"
                  class="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
               <ul class="max-h-44 overflow-y-auto py-1">
                 <template x-for="u in filtered" :key="u.id">
