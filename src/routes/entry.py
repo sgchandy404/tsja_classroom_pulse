@@ -261,7 +261,9 @@ def export_template():
     wb.save(output)
     output.seek(0)
 
-    filename = f"TEMPLATE_{grade.replace(' ', '_')}_{subject.name.replace(' ', '_')}_Fortnightly_Evaluation.xlsx"
+    is_template = request.args.get("template") == "1"
+    prefix   = "TEMPLATE_" if is_template else ""
+    filename = f"{prefix}{grade.replace(' ', '_')}_{subject.name.replace(' ', '_')}_Fortnightly_Evaluation.xlsx"
     return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
