@@ -693,7 +693,7 @@ def composite_import_template():
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
-@admin_bp.route("/grades/setup-wizard")
+@admin_bp.route("/grades/setup-wizard", methods=["GET", "POST"])
 @login_required
 @require_role("admin")
 def setup_grade_wizard():
@@ -704,13 +704,41 @@ def setup_grade_wizard():
     grade = Grade.query.filter_by(name=grade_name).first() if grade_name else None
     subjects = Subject.query.filter_by(grade=grade_name, is_active=True).order_by(Subject.name).all() if grade else []
     active_grades = _all_grades()
+    all_users = User.query.filter_by(active=True).order_by(User.username).all()
+
+    # Current teacher assignments: subject_id → [user_id, ...]
+    current_assignments: dict = {}
+    if grade:
+        for subj in subjects:
+            rows = UserRole.query.filter_by(role="teacher", grade=grade_name, subject_id=subj.id).all()
+            current_assignments[subj.id] = [r.user_id for r in rows]
+
+    if request.method == "POST" and step == "teachers" and grade:
+        UserRole.query.filter_by(role="teacher", grade=grade_name).filter(
+            UserRole.subject_id.in_([s.id for s in subjects])
+        ).delete(synchronize_session=False)
+
+        for subj in subjects:
+            for uid_str in request.form.getlist(f"teacher_{subj.id}"):
+                try:
+                    db.session.add(UserRole(user_id=int(uid_str), role="teacher",
+                                           grade=grade_name, subject_id=subj.id))
+                except ValueError:
+                    pass
+
+        db.session.commit()
+        log_audit(action="edit", model_name="UserRole",
+                  record_id=0, note=f"Wizard: teacher assignments saved for {grade_name}")
+        return redirect(url_for("admin.setup_grade_wizard", grade=grade_name, step="students"))
 
     return render_template("admin/setup_grade_wizard.html",
                            grade=grade,
                            grade_name=grade_name,
                            step=step,
                            subjects=subjects,
-                           active_grades=active_grades)
+                           active_grades=active_grades,
+                           all_users=all_users,
+                           current_assignments=current_assignments)
 
 
 # ---------------------------------------------------------------------------
