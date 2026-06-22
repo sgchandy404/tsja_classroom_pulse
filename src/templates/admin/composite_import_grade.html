@@ -74,8 +74,8 @@ function compositeImportWizard() {
           Continue setting up "{{ conflicting_grade }}" →
         </a>
         {% if conflicting_grade_obj %}
-        <form method="POST" action="{{ url_for('admin.delete_empty_grade', grade_id=conflicting_grade_obj.id) }}"
-              onsubmit="return confirm('Delete {{ conflicting_grade }}? This cannot be undone.')">
+        <form method="POST" action="{{ url_for('admin.delete_grade', grade_id=conflicting_grade_obj.id) }}"
+              onsubmit="return confirm('This will permanently delete {{ conflicting_grade }} and all its subjects and rubrics. Students cannot be deleted this way.\n\nContinue?')">
           <input type="hidden" name="next" value="{{ request.url }}">
           <button type="submit"
                   class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors">
@@ -85,7 +85,8 @@ function compositeImportWizard() {
         {% endif %}
       </div>
       <p class="text-[10px] text-amber-600">
-        Delete is only available if "{{ conflicting_grade }}" has no subjects or students yet.
+        Delete removes the grade, its subjects, rubrics, and teacher assignments — but not students.
+        If the grade has students, deactivate it instead.
       </p>
     </div>
     {% endif %}

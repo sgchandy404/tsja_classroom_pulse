@@ -355,27 +355,43 @@ def deactivate_grade(grade_id):
                            entry_count=entry_count)
 
 
-@admin_bp.route("/grades/<int:grade_id>/delete-empty", methods=["POST"])
+@admin_bp.route("/grades/<int:grade_id>/delete", methods=["POST"])
 @login_required
 @require_role("admin")
-def delete_empty_grade(grade_id):
-    """Hard-delete a grade that has no subjects, students, or entries — escape hatch for partial setups."""
+def delete_grade(grade_id):
+    """Hard-delete a grade and cascade-remove its subjects, rubrics, and role assignments.
+    Refused if the grade has any students (they may carry entry data)."""
     grade = db.session.get(Grade, grade_id)
     if not grade:
         abort(404)
-    subject_count = Subject.query.filter_by(grade=grade.name).count()
     student_count = Student.query.filter_by(grade=grade.name).count()
-    if subject_count > 0 or student_count > 0:
-        flash(f"Cannot delete '{grade.name}' — it still has subjects or students. Deactivate it instead.", "error")
-        return redirect(url_for("admin.grades"))
+    if student_count > 0:
+        flash(
+            f"Cannot delete '{grade.name}' — it has {student_count} student(s) with possible entry data. "
+            "Deactivate it instead, or remove the students first.",
+            "error",
+        )
+        next_url = request.form.get("next") or url_for("admin.grades")
+        return redirect(next_url)
+
     name = grade.name
+    subjects = Subject.query.filter_by(grade=name).all()
+    subject_ids = [s.id for s in subjects]
+
+    # Cascade: rubrics → user role assignments → subjects → grade
+    if subject_ids:
+        Rubric.query.filter(Rubric.subject_id.in_(subject_ids)).delete(synchronize_session=False)
+        UserRole.query.filter(UserRole.subject_id.in_(subject_ids)).delete(synchronize_session=False)
+    UserRole.query.filter_by(grade=name).delete(synchronize_session=False)
+    Subject.query.filter_by(grade=name).delete(synchronize_session=False)
     db.session.delete(grade)
+
     log_audit(user=current_user, action="delete", model_name="Grade",
               record_id=grade_id, field_name="name", old_value=name,
-              note="Deleted empty grade via import override")
+              note=f"Cascade-deleted grade with {len(subject_ids)} subject(s)")
     db.session.commit()
     next_url = request.form.get("next") or url_for("admin.grades")
-    flash(f"Grade '{name}' deleted. You can now re-import.", "success")
+    flash(f"Grade '{name}' and all its subjects and rubrics have been deleted.", "success")
     return redirect(next_url)
 
 
