@@ -4,11 +4,18 @@
 {% block page_title %}Settings{% endblock %}
 
 {% block header_actions %}
-  <a href="{{ url_for('settings.new_year') }}"
-     class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
-            hover:bg-indigo-500 transition-colors">
-    + New Academic Year
-  </a>
+  <div class="flex items-center gap-2">
+    <a href="{{ url_for('admin.config') }}"
+       class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm
+              hover:border-slate-300 hover:text-slate-800 transition-colors">
+      ⚙ App Config
+    </a>
+    <a href="{{ url_for('settings.new_year') }}"
+       class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
+              hover:bg-indigo-500 transition-colors">
+      + New Academic Year
+    </a>
+  </div>
 {% endblock %}
 
 {% block content %}
