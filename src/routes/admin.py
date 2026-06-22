@@ -3,22 +3,11 @@ Admin blueprint — user management, grade/subject management, app config.
 All routes require the 'admin' role.
 """
 import io
-import re
-import secrets
 import openpyxl
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, send_file
 from flask_login import login_required, current_user
 from models import db, User, UserRole, Subject, Student, Grade, Rubric, AppConfig, FortnightEntry, ROLES
 from permissions import require_role, log_audit, perms as get_perms
-
-# Display label → internal role key
-_ROLE_LABEL_MAP = {
-    "teacher":     "teacher",
-    "in-charge":   "incharge",
-    "incharge":    "incharge",
-    "coordinator": "coordinator",
-    "admin":       "admin",
-}
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -102,183 +91,6 @@ def index():
     return render_template("admin/index.html", users=users)
 
 
-@admin_bp.route("/users/import", methods=["GET", "POST"])
-@login_required
-@require_role("admin")
-def import_users():
-    if request.method == "GET":
-        return render_template("admin/import_users.html")
-
-    file = request.files.get("file")
-    if not file or not file.filename:
-        flash("No file selected.", "error")
-        return render_template("admin/import_users.html")
-
-    try:
-        wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
-    except Exception:
-        flash("Could not read the file. Please upload a valid .xlsx file.", "error")
-        return render_template("admin/import_users.html")
-
-    ws = wb.active
-    rows = list(ws.iter_rows(min_row=2, values_only=True))
-
-    # Pre-load lookup tables
-    existing_usernames = {u.username.lower() for u in User.query.all()}
-    valid_grades = {g.name for g in Grade.query.filter_by(is_active=True).all()}
-    # subject lookup: (grade, name_lower) → subject_id
-    all_subjects = Subject.query.filter_by(is_active=True).all()
-    subject_map = {(s.grade, s.name.lower()): s.id for s in all_subjects}
-    # existing in-charge assignments: grade → username (for conflict detection)
-    existing_incharge = {}
-    for ur in UserRole.query.filter_by(role="incharge").all():
-        if ur.grade and ur.user:
-            existing_incharge.setdefault(ur.grade, []).append(ur.user.username)
-
-    succeeded = []  # {"name", "username", "temp_password", "roles_summary"}
-    failed = []     # {"row", "username", "reasons": [...]}
-    seen_usernames_in_file = {}  # username_lower → row number
-
-    def _parse_csv(cell):
-        if not cell:
-            return []
-        return [v.strip() for v in str(cell).split(",") if v.strip()]
-
-    for idx, row in enumerate(rows, start=2):
-        name      = str(row[0]).strip() if row[0] is not None else ""
-        username  = str(row[1]).strip() if row[1] is not None else ""
-        roles_raw = _parse_csv(row[2] if len(row) > 2 else None)
-        grades_raw= _parse_csv(row[3] if len(row) > 3 else None)
-        subjs_raw = _parse_csv(row[4] if len(row) > 4 else None)
-
-        if not name and not username:
-            continue  # blank row
-
-        row_errors = []
-
-        if not name:
-            row_errors.append("Name is required")
-        if not username:
-            row_errors.append("Email/Username is required")
-        elif not re.match(r"[^@]+@[^@]+\.[^@]+", username):
-            row_errors.append(f"'{username}' is not a valid email address")
-        elif username.lower() in existing_usernames:
-            row_errors.append(f"'{username}' already exists")
-        elif username.lower() in seen_usernames_in_file:
-            row_errors.append(
-                f"'{username}' duplicated in this file (first seen row {seen_usernames_in_file[username.lower()]})"
-            )
-
-        # Validate roles
-        parsed_roles = []
-        for r in roles_raw:
-            key = _ROLE_LABEL_MAP.get(r.lower())
-            if key:
-                parsed_roles.append(key)
-            else:
-                row_errors.append(f"Unknown role '{r}' (valid: Teacher, In-Charge, Coordinator, Admin)")
-
-        # Validate grades (used for In-Charge assignments)
-        bad_grades = [g for g in grades_raw if g not in valid_grades]
-        if bad_grades:
-            row_errors.append(f"Grade(s) not found: {', '.join(bad_grades)}")
-        valid_assigned_grades = [g for g in grades_raw if g in valid_grades]
-
-        # In-Charge conflict check
-        if "incharge" in parsed_roles:
-            if not valid_assigned_grades:
-                row_errors.append("In-Charge role requires at least one Assigned Grade")
-            for g in valid_assigned_grades:
-                existing = existing_incharge.get(g, [])
-                if existing:
-                    row_errors.append(
-                        f"Grade '{g}' already has an In-Charge ({', '.join(existing)}) — resolve conflict first"
-                    )
-
-        # Validate subjects — each entry must be "Grade:Subject" pair
-        # e.g. "Grade 7:Maths, Grade 8:Science"
-        teacher_assignments = []  # list of (grade, subject_id)
-        if "teacher" in parsed_roles or "incharge" in parsed_roles:
-            for entry in subjs_raw:
-                if ":" not in entry:
-                    row_errors.append(
-                        f"Subject entry '{entry}' must use Grade:Subject format "
-                        f"(e.g. 'Grade 7:Maths')"
-                    )
-                    continue
-                grade_part, subj_part = [p.strip() for p in entry.split(":", 1)]
-                if grade_part not in valid_grades:
-                    row_errors.append(f"Grade '{grade_part}' in subject entry not found")
-                    continue
-                key = (grade_part, subj_part.lower())
-                if key not in subject_map:
-                    row_errors.append(
-                        f"Subject '{subj_part}' not found in {grade_part}"
-                    )
-                else:
-                    teacher_assignments.append((grade_part, subject_map[key]))
-
-        if row_errors:
-            failed.append({
-                "row": idx,
-                "username": username or "(blank)",
-                "name": name or "(blank)",
-                "reasons": row_errors,
-            })
-            continue
-
-        # All valid — create user
-        temp_password = secrets.token_urlsafe(10)
-        user = User(
-            username=username,
-            name=name,
-            active=True,
-            must_change_password=True,
-        )
-        user.set_password(temp_password)
-        db.session.add(user)
-        db.session.flush()
-
-        for role_key in set(parsed_roles):
-            if role_key in ("admin", "coordinator"):
-                db.session.add(UserRole(user_id=user.id, role=role_key))
-            elif role_key == "incharge":
-                for g in valid_assigned_grades:
-                    db.session.add(UserRole(user_id=user.id, role="incharge", grade=g))
-            elif role_key == "teacher":
-                for g, sid in set(teacher_assignments):
-                    db.session.add(UserRole(user_id=user.id, role="teacher", grade=g, subject_id=sid))
-
-        seen_usernames_in_file[username.lower()] = idx
-        existing_usernames.add(username.lower())
-        roles_summary = ", ".join(sorted(set(parsed_roles)))
-        succeeded.append({
-            "name": name,
-            "username": username,
-            "temp_password": temp_password,
-            "roles_summary": roles_summary,
-        })
-
-    if succeeded:
-        log_audit(
-            user=current_user, action="create", model_name="User", record_id=0,
-            field_name="bulk_import",
-            new_value=f"{len(succeeded)} users imported; {len(failed)} failed",
-            note=f"File: {file.filename}",
-        )
-        db.session.commit()
-
-    if succeeded and not failed:
-        flash(f"Imported {len(succeeded)} user(s) successfully.", "success")
-    elif succeeded and failed:
-        flash(f"Imported {len(succeeded)} user(s). {len(failed)} row(s) had errors.", "warning")
-    else:
-        flash(f"No users imported. {len(failed)} row(s) had errors.", "error")
-
-    return render_template("admin/import_users.html",
-                           succeeded=succeeded, failed_rows=failed)
-
-
 @admin_bp.route("/users/export")
 @login_required
 @require_role("admin")
@@ -334,41 +146,6 @@ def export_users():
     db.session.commit()
 
     return send_file(buf, as_attachment=True, download_name="Users_Export.xlsx",
-                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-
-@admin_bp.route("/users/template")
-@login_required
-@require_role("admin")
-def users_import_template():
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Users"
-
-    bold = openpyxl.styles.Font(bold=True)
-    headers = ["Name", "Email", "Role(s)", "Assigned Grade(s)", "Assigned Subject(s)"]
-    for col, h in enumerate(headers, 1):
-        ws.cell(row=1, column=col, value=h).font = bold
-
-    # Hint row
-    ws.cell(row=2, column=1, value="e.g. Priya Sharma")
-    ws.cell(row=2, column=2, value="priya@school.edu")
-    ws.cell(row=2, column=3, value="Teacher, In-Charge")
-    ws.cell(row=2, column=4, value="Grade 7, Grade 8")
-    ws.cell(row=2, column=5, value="Grade 7:Maths, Grade 8:Science")
-
-    hint_font = openpyxl.styles.Font(italic=True, color="999999")
-    for col in range(1, 6):
-        ws.cell(row=2, column=col).font = hint_font
-
-    for col, width in zip("ABCDE", [30, 35, 30, 25, 40]):
-        ws.column_dimensions[col].width = width
-
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-
-    return send_file(buf, as_attachment=True, download_name="TEMPLATE_Users_Import.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
