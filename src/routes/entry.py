@@ -261,7 +261,7 @@ def export_template():
     wb.save(output)
     output.seek(0)
 
-    filename = f"{grade.replace(' ', '_')}_{subject.name.replace(' ', '_')}_Fortnightly_Evaluation.xlsx"
+    filename = f"TEMPLATE_{grade.replace(' ', '_')}_{subject.name.replace(' ', '_')}_Fortnightly_Evaluation.xlsx"
     return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
